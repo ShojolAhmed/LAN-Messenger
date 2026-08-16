@@ -23,6 +23,7 @@
      9.  Message list (dividers, rows, bubbles)
      10. Composer (input, send button, icon button)
      11. Empty state
+     12. Connect / login screen
    ============================================================ */
 
 /* ------------------------------------------------------------
@@ -664,4 +665,139 @@
     -fx-text-alignment: center;
     -fx-wrap-text: true;
     -fx-max-width: 320;
+}
+
+/* ------------------------------------------------------------
+   12. CONNECT / LOGIN SCREEN — centered card over the app canvas.
+   ------------------------------------------------------------ */
+.connect-root {
+    -fx-background-color: -color-bg-primary;
+    -fx-alignment: center;
+    -fx-padding: 32;
+}
+
+/* The card that holds the brand, headings, fields and button. */
+.connect-card {
+    -fx-background-color: -color-surface;
+    -fx-background-radius: 16;
+    -fx-border-color: -color-border;
+    -fx-border-width: 1;
+    -fx-border-radius: 16;
+    -fx-padding: 30 30 26 30;
+    -fx-spacing: 2;
+    -fx-min-width: 360;
+    -fx-pref-width: 400;
+    -fx-max-width: 400;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.45), 40, 0.12, 0, 16);
+}
+
+.connect-brand {
+    -fx-alignment: center-left;
+    -fx-spacing: 12;
+    -fx-padding: 0 0 6 0;
+}
+.connect-heading {
+    -fx-text-fill: -color-text-primary;
+    -fx-font-size: 22px;
+    -fx-font-weight: bold;
+    -fx-padding: 6 0 0 0;
+}
+.connect-sub {
+    -fx-text-fill: -color-text-muted;
+    -fx-font-size: 13px;
+    -fx-padding: 2 0 6 0;
+}
+
+/* A label + input pair. */
+.field-group {
+    -fx-spacing: 6;
+    -fx-padding: 8 0 0 0;
+}
+.field-label {
+    -fx-text-fill: -color-text-secondary;
+    -fx-font-size: 12.5px;
+    -fx-font-weight: bold;
+}
+.field-input {
+    -fx-background-color: -color-bg-primary;
+    -fx-background-radius: 10;
+    -fx-border-radius: 10;
+    -fx-border-width: 1;
+    -fx-border-color: -color-border;
+    -fx-text-fill: -color-text-primary;
+    -fx-prompt-text-fill: -color-text-muted;
+    -fx-font-size: 14px;
+    -fx-padding: 10 12 10 12;
+    -fx-highlight-fill: rgba(99, 102, 241, 0.45);
+    -fx-highlight-text-fill: -color-text-primary;
+}
+.field-input:hover {
+    -fx-border-color: -color-border-strong;
+}
+.field-input:focused {
+    -fx-border-color: -color-primary;
+    -fx-effect: dropshadow(gaussian, rgba(99, 102, 241, 0.25), 12, 0.0, 0, 0);
+}
+/* Invalid field: red border, kept even while focused. */
+.field-input.field-invalid {
+    -fx-border-color: -color-error;
+}
+.field-input.field-invalid:focused {
+    -fx-border-color: -color-error;
+    -fx-effect: dropshadow(gaussian, rgba(239, 68, 68, 0.22), 12, 0.0, 0, 0);
+}
+
+/* Validation / connection error message. */
+.connect-error {
+    -fx-text-fill: -color-error;
+    -fx-font-size: 12.5px;
+    -fx-wrap-text: true;
+    -fx-padding: 10 0 2 0;
+}
+
+/* Full-width primary action. */
+.connect-button-row {
+    -fx-padding: 16 0 0 0;
+}
+.connect-button {
+    -fx-background-color: -color-primary;
+    -fx-background-radius: 11;
+    -fx-text-fill: -color-on-primary;
+    -fx-font-size: 14.5px;
+    -fx-font-weight: bold;
+    -fx-padding: 11 16 11 16;
+    -fx-cursor: hand;
+    -fx-graphic-text-gap: 10;
+    -fx-effect: dropshadow(gaussian, rgba(99, 102, 241, 0.35), 12, 0.05, 0, 3);
+}
+.connect-button:hover {
+    -fx-background-color: -color-primary-hover;
+}
+.connect-button:pressed {
+    -fx-background-color: #4F46E5;
+    -fx-effect: none;
+}
+.connect-button:focused {
+    -fx-border-color: -color-cyan;
+    -fx-border-width: 1;
+    -fx-border-radius: 11;
+    -fx-background-insets: 0;
+}
+.connect-button:disabled {
+    -fx-background-color: -color-surface-2;
+    -fx-text-fill: -color-text-secondary;
+    -fx-effect: none;
+    -fx-opacity: 1;
+    -fx-cursor: default;
+}
+
+/* Small inline spinner shown in the button while connecting. */
+.connect-spinner {
+    -fx-progress-color: -color-on-primary;
+}
+.connect-spinner .percentage {
+    -fx-fill: transparent;
+}
+.connect-button:disabled .connect-spinner {
+    -fx-progress-color: -color-text-secondary;
 }

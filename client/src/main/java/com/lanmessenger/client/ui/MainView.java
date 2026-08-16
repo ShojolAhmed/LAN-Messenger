@@ -4,6 +4,7 @@ import com.lanmessenger.client.ui.components.ChatHeader;
 import com.lanmessenger.client.ui.components.MessageComposer;
 import com.lanmessenger.client.ui.components.MessageListView;
 import com.lanmessenger.client.ui.components.Sidebar;
+import com.lanmessenger.client.ui.components.StatusIndicator;
 import com.lanmessenger.client.ui.components.TitleBar;
 import com.lanmessenger.client.ui.model.ChatMessage;
 import com.lanmessenger.client.ui.model.Conversation;
@@ -29,6 +30,7 @@ import java.util.List;
  */
 public final class MainView extends BorderPane {
 
+    private final TitleBar titleBar = new TitleBar(Protocol.APP_NAME);
     private final ChatHeader chatHeader = new ChatHeader();
     private final MessageListView messageList = new MessageListView();
     private final MessageComposer composer = new MessageComposer();
@@ -50,7 +52,7 @@ public final class MainView extends BorderPane {
         HBox split = new HBox(sidebar, chatPane);
         split.getStyleClass().add("content-split");
 
-        setTop(new TitleBar(Protocol.APP_NAME));
+        setTop(titleBar);
         setCenter(split);
 
         // Wire interactions (sample-data only).
@@ -63,6 +65,16 @@ public final class MainView extends BorderPane {
     /** Focuses the composer input; call once the window is shown. */
     public void focusComposer() {
         composer.focusInput();
+    }
+
+    /** Reflects a live connection in the title bar's status pill. */
+    public void showConnected() {
+        titleBar.status().setState(StatusIndicator.State.CONNECTED);
+    }
+
+    /** Reflects a lost/closed connection in the title bar's status pill. */
+    public void showDisconnected() {
+        titleBar.status().setState(StatusIndicator.State.DISCONNECTED);
     }
 
     private void openConversation(Conversation conversation) {

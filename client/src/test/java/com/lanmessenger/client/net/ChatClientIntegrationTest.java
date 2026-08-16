@@ -85,6 +85,30 @@ class ChatClientIntegrationTest {
     }
 
     @Test
+    @DisplayName("a duplicate username is rejected with LOGIN_FAILED")
+    void duplicateUsernameRejectedAtLogin() throws Exception {
+        RecordingListener alice = new RecordingListener();
+        connectAndSettle(alice, "alice");
+
+        // A second client requests the same name. The transport connection succeeds,
+        // but the server's login verdict is a clean rejection the UI can surface.
+        RecordingListener duplicate = new RecordingListener();
+        ChatClient duplicateClient = new ChatClient(duplicate);
+        clients.add(duplicateClient);
+        duplicateClient.connect("127.0.0.1", port, "alice");
+
+        assertTrue(duplicate.connected.await(AWAIT_MILLIS, TimeUnit.MILLISECONDS),
+                "the transport connection should succeed before the login verdict");
+        Message failed = duplicate.awaitType(MessageType.LOGIN_FAILED);
+        assertTrue(failed.content().toLowerCase().contains("taken"),
+                "the rejection should explain the name is already taken");
+
+        // Only the original 'alice' remains registered on the server.
+        waitUntil(() -> server.clientManager().size() == 1);
+        assertTrue(server.clientManager().usernames().contains("alice"));
+    }
+
+    @Test
     @DisplayName("a client can send data and a peer receives it")
     void clientCanSendAndPeerReceives() throws Exception {
         RecordingListener alice = new RecordingListener();

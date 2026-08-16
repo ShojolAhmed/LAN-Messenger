@@ -1,6 +1,7 @@
 package com.lanmessenger.server;
 
 import com.lanmessenger.common.Message;
+import com.lanmessenger.common.Usernames;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -33,10 +34,6 @@ import java.util.logging.Logger;
 public final class ClientHandler implements Runnable {
 
     private static final Logger LOG = Logger.getLogger(ClientHandler.class.getName());
-
-    /** Allowed username characters and length, validated at login. */
-    private static final int MAX_USERNAME_LENGTH = 24;
-    private static final String USERNAME_PATTERN = "[A-Za-z0-9._-]{1," + MAX_USERNAME_LENGTH + "}";
 
     private final Socket socket;
     private final ClientManager clientManager;
@@ -144,8 +141,8 @@ public final class ClientHandler implements Runnable {
     private void attemptLogin(String requestedName) {
         String name = requestedName == null ? "" : requestedName.trim();
 
-        if (!name.matches(USERNAME_PATTERN)) {
-            send(Message.loginFailed("invalid username (use 1-" + MAX_USERNAME_LENGTH
+        if (!Usernames.isValid(name)) {
+            send(Message.loginFailed("invalid username (use 1-" + Usernames.MAX_LENGTH
                     + " chars: letters, digits, '.', '_', '-')"));
             return;
         }

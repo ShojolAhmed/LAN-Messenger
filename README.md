@@ -68,8 +68,29 @@ kept deliberately subtle.
 
 This phase establishes the visual system only: the UI runs on in-memory sample
 data (`SampleData`) via lightweight view-models (`ChatUser`, `ChatMessage`,
-`Conversation`) and is **not** yet wired to `client.net` — connecting the two is a
-later phase.
+`Conversation`).
+
+### Connecting and logging in
+
+On launch the client shows a polished **connection screen** — username, server IP
+and port — built from the same design system. Inputs are validated up front by the
+JavaFX-free `ConnectionValidator`, which surfaces clear, specific errors (an empty
+or invalid username, an invalid server IP, a port outside 1–65535). The username
+rules live in `common`'s `Usernames`, shared with the server so client and server
+validation never drift.
+
+Pressing **Connect** runs the blocking socket handshake on a background task, so
+the JavaFX Application Thread never freezes, and the button shows a subtle
+"connecting" state. `ClientController` then drives the `LOGIN` handshake: on
+`LOGIN_SUCCESS` it transitions to the messenger shell and lights up a live
+**Connected** status; on `LOGIN_FAILED` (for example a username already in use) it
+shows the reason cleanly and lets the user adjust and retry; and if the socket
+cannot be opened it reports "Unable to connect to server." A connection that later
+drops returns to the connection screen.
+
+Wiring live message exchange (the roster and global/private messages) from the
+transcript to `client.net` is the next phase — the messenger currently still shows
+`SampleData` once connected.
 
 ### Message protocol
 
@@ -132,9 +153,11 @@ mvn -pl server exec:java -Dexec.args="5050"
 Press `Ctrl+C` to stop the server; it disconnects clients and shuts down
 gracefully.
 
-**Start the client** (opens the JavaFX messenger window — the full UI shell:
-title bar, sidebar, chat transcript and composer. It currently runs on sample
-data; the networking layer is in place and will be connected in a later phase):
+**Start the client** (opens the JavaFX connection screen — enter a username, the
+server's IP and port, then **Connect**. On a successful login it transitions to the
+messenger shell: title bar with a live connection status, sidebar, chat transcript
+and composer. Start the server first, or point it at another machine's IP on your
+LAN):
 
 ```bash
 mvn -pl client javafx:run
@@ -154,8 +177,11 @@ The `server` module includes protocol unit tests and real-socket integration
 tests that cover multiple clients connecting, message routing, and both clean and
 abrupt disconnects. The `client` module adds integration tests that drive the
 networking layer against a real server over loopback sockets, verifying connect,
-send, receive, multiple concurrent clients, and safe local and server-side
-disconnects.
+send, receive, multiple concurrent clients, safe local and server-side
+disconnects, a rejected duplicate-username login, and a clean failure when the
+server is unavailable. Fast, headless unit tests for `ConnectionValidator` cover
+the connection-screen input rules (empty/invalid username, invalid server IP, and
+out-of-range or non-numeric port).
 
 ---
 
@@ -194,12 +220,25 @@ pre-release (`1.0-SNAPSHOT`), so current work lives under **Unreleased**.
   (`ChatUser`, `ChatMessage`, `Conversation`) round it out. Every colour, radius and
   interactive state (hover, focus, pressed, disabled, selected, empty) is defined
   once in a centralised design-token stylesheet (`theme.css`); the layout is
-  responsive with reflowing bubbles and subtle animations. Runs on in-memory
-  `SampleData` and is intentionally not yet wired to `client.net`.
+  responsive with reflowing bubbles and subtle animations. The transcript runs on
+  in-memory `SampleData`; the connection/login flow below is now wired to
+  `client.net`, with live message exchange to follow.
+- **Client connection & login flow** (`client`): the app now opens on a polished
+  connection screen (`ConnectView`) collecting username, server IP and port. Input
+  is validated up front by the JavaFX-free `ConnectionValidator` with clear, field
+  specific errors (empty/invalid username, invalid server IP, out-of-range or non
+  numeric port). `ClientController` connects on a background task — so the JavaFX
+  thread never freezes — shows a subtle "connecting" state, then drives the `LOGIN`
+  handshake: `LOGIN_SUCCESS` transitions to the messenger shell with a live
+  **Connected** status; `LOGIN_FAILED` (e.g. a username already in use) and an
+  unreachable server ("Unable to connect to server.") are reported cleanly for a
+  retry, and a dropped connection returns to the connection screen.
 - **Automated tests** (JUnit 5): protocol unit tests plus real-socket integration
   tests for multi-client connect, message routing, and disconnect resilience;
   client-side integration tests exercise the networking layer against a live
-  server (connect, send/receive, multiple clients, and disconnect handling).
+  server (connect, send/receive, multiple clients, disconnect handling, and a
+  rejected duplicate-username login), plus headless `ConnectionValidator` unit
+  tests for the connection-screen input rules.
 
 #### Changed
 - Replaced the placeholder `ServerApp` with `ServerApplication`, adding the
@@ -208,6 +247,12 @@ pre-release (`1.0-SNAPSHOT`), so current work lives under **Unreleased**.
   (`MainView`); `ClientApp` now loads the design system through `Theme` and, under
   `LANMSG_SMOKE=1`, runs a self-closing multi-size layout check to guard against
   size-dependent regressions.
+- The client now launches into the connection screen (`ConnectView` driven by
+  `ClientController`) rather than straight into `MainView`; the `LANMSG_SMOKE=1`
+  layout check now exercises both screens.
+- Extracted the username policy into `common`'s `Usernames`, now shared by the
+  server's `ClientHandler` and the client's `ConnectionValidator` so client-side
+  and server-side validation cannot drift.
 
 ### Project setup
 
