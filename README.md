@@ -128,11 +128,20 @@ protocol easy to extend.
 
 ## Build
 
-Compile and package every module from the project root:
+Build and install every module from the project root:
 
 ```bash
-mvn clean package
+mvn clean install
 ```
+
+> **Use `install`, not just `package`.** The run commands below use `-pl`
+> (single-module) invocations, so they resolve the shared `common` module from
+> your local Maven repository (`~/.m2`). `mvn clean package` never (re)installs
+> `common` there, so after any change to `common` a `-pl server`/`-pl client`
+> run would link against a **stale** `common` and fail at runtime with
+> `NoClassDefFoundError: com/lanmessenger/common/Message` (or `Usernames`) — for
+> example the moment you press **Connect** on the login screen. Running
+> `mvn clean install` (or launching from the reactor) keeps `common` in sync.
 
 ---
 
