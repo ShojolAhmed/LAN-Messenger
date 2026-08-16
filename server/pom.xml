@@ -17,11 +17,31 @@
     <name>LAN Messenger :: Server</name>
     <description>Central TCP server that accepts connections and (later) routes messages.</description>
 
+    <properties>
+        <!-- Test stack. Surefire 3.5.4 is already cached locally and runs JUnit 5. -->
+        <junit.version>5.12.1</junit.version>
+        <surefire.plugin.version>3.5.4</surefire.plugin.version>
+    </properties>
+
     <dependencies>
-        <!-- Shared protocol constants (e.g. the default port). -->
+        <!-- Shared protocol constants and message model. -->
         <dependency>
             <groupId>com.lanmessenger</groupId>
             <artifactId>common</artifactId>
+        </dependency>
+
+        <!-- JUnit 5 for the server integration tests (test scope only). -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-api</artifactId>
+            <version>${junit.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-engine</artifactId>
+            <version>${junit.version}</version>
+            <scope>test</scope>
         </dependency>
     </dependencies>
 
@@ -37,8 +57,15 @@
                 <artifactId>exec-maven-plugin</artifactId>
                 <version>${exec.plugin.version}</version>
                 <configuration>
-                    <mainClass>com.lanmessenger.server.ServerApp</mainClass>
+                    <mainClass>com.lanmessenger.server.ServerApplication</mainClass>
                 </configuration>
+            </plugin>
+
+            <!-- Pinned so JUnit 5 tests run consistently across environments. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>${surefire.plugin.version}</version>
             </plugin>
         </plugins>
     </build>
