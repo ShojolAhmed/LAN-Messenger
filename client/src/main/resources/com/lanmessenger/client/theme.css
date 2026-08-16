@@ -1,0 +1,86 @@
+/* ============================================================
+   LAN Messenger — Dark Theme
+   ------------------------------------------------------------
+   Design tokens are declared ONCE here as JavaFX "looked-up
+   colors". Components below reference these names instead of
+   raw hex values, so the palette can be changed in one place.
+   ============================================================ */
+
+.root {
+    /* ---- Background ---- */
+    -color-bg-primary:    #0F172A;
+    -color-bg-secondary:  #111827;
+    -color-surface:       #1E293B;
+
+    /* ---- Accents ---- */
+    -color-primary:       #6366F1;
+    -color-primary-hover: #818CF8;
+    -color-cyan:          #22D3EE;
+
+    /* ---- Status ---- */
+    -color-success:       #22C55E;
+    -color-warning:       #F59E0B;
+    -color-error:         #EF4444;
+
+    /* ---- Text ---- */
+    -color-text-primary:   #F8FAFC;
+    -color-text-secondary: #CBD5E1;
+    -color-text-muted:     #64748B;
+
+    /* ---- Border ---- */
+    -color-border:        #334155;
+
+    -fx-font-family: "Segoe UI", "Inter", "Roboto", sans-serif;
+    -fx-background-color: -color-bg-primary;
+}
+
+/* App background canvas with generous padding. */
+.app-root {
+    -fx-background-color: -color-bg-primary;
+    -fx-padding: 48;
+}
+
+/* Centered surface card: rounded corners, subtle border + shadow. */
+.card {
+    -fx-background-color: -color-surface;
+    -fx-background-radius: 16;
+    -fx-border-color: -color-border;
+    -fx-border-radius: 16;
+    -fx-border-width: 1;
+    -fx-padding: 48 56 48 56;
+    -fx-spacing: 16;
+    -fx-alignment: center;
+    -fx-max-width: 520;
+    -fx-max-height: 340;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.45), 32, 0.2, 0, 12);
+}
+
+.app-title {
+    -fx-text-fill: -color-text-primary;
+    -fx-font-size: 34px;
+    -fx-font-weight: bold;
+}
+
+.app-subtitle {
+    -fx-text-fill: -color-text-secondary;
+    -fx-font-size: 15px;
+}
+
+/* Small rounded "pill" using the success accent. */
+.status-pill {
+    -fx-text-fill: -color-success;
+    -fx-background-color: rgba(34, 197, 94, 0.12);
+    -fx-background-radius: 999;
+    -fx-border-color: rgba(34, 197, 94, 0.35);
+    -fx-border-radius: 999;
+    -fx-border-width: 1;
+    -fx-padding: 6 14 6 14;
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+}
+
+.app-footer {
+    -fx-text-fill: -color-text-muted;
+    -fx-font-size: 12px;
+    -fx-padding: 8 0 0 0;
+}

@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.lanmessenger</groupId>
+        <artifactId>lan-messenger</artifactId>
+        <version>1.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>client</artifactId>
+    <packaging>jar</packaging>
+
+    <name>LAN Messenger :: Client</name>
+    <description>JavaFX desktop application for the LAN Messenger.</description>
+
+    <dependencies>
+        <!-- Shared protocol constants. -->
+        <dependency>
+            <groupId>com.lanmessenger</groupId>
+            <artifactId>common</artifactId>
+        </dependency>
+
+        <!-- JavaFX. 'controls' transitively brings base + graphics, which is all
+             the UI needs for now. Platform-specific natives are resolved by Maven. -->
+        <dependency>
+            <groupId>org.openjfx</groupId>
+            <artifactId>javafx-controls</artifactId>
+            <version>${javafx.version}</version>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <!--
+                Runs the JavaFX application with:
+                    mvn -pl client javafx:run
+                The plugin builds the JavaFX module path automatically, so we do
+                not need a module-info.java for this project.
+            -->
+            <plugin>
+                <groupId>org.openjfx</groupId>
+                <artifactId>javafx-maven-plugin</artifactId>
+                <version>${javafx.plugin.version}</version>
+                <configuration>
+                    <mainClass>com.lanmessenger.client.ClientApp</mainClass>
+                    <!-- JavaFX loads native libraries; on JDK 24+ this flag
+                         grants native access so no runtime warning is printed. -->
+                    <options>
+                        <option>--enable-native-access=javafx.graphics</option>
+                    </options>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>
