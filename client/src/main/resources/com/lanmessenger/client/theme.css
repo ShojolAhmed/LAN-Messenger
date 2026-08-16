@@ -1,16 +1,39 @@
 /* ============================================================
-   LAN Messenger — Dark Theme
+   LAN Messenger — Design System (Dark)
    ------------------------------------------------------------
-   Design tokens are declared ONCE here as JavaFX "looked-up
-   colors". Components below reference these names instead of
-   raw hex values, so the palette can be changed in one place.
+   This stylesheet is the SINGLE SOURCE OF TRUTH for the app's
+   visual language: colour palette, elevation, radii, typography
+   and every component's look and interactive states.
+
+   Design tokens (the palette) are declared ONCE below as JavaFX
+   "looked-up colors". Every rule references those token names
+   (e.g. -color-primary) instead of raw hex values, so the whole
+   theme can be re-skinned from one place. Java code assigns
+   style classes only and never hard-codes colours.
+
+   Contents
+     1.  Tokens (palette)
+     2.  Global / root
+     3.  Scrollbars
+     4.  App shell (title bar, split, panels)
+     5.  Status indicator
+     6.  Avatars + presence
+     7.  Sidebar (search, sections, items)
+     8.  Chat header
+     9.  Message list (dividers, rows, bubbles)
+     10. Composer (input, send button, icon button)
+     11. Empty state
    ============================================================ */
 
+/* ------------------------------------------------------------
+   1. TOKENS — the palette. Change colours here only.
+   ------------------------------------------------------------ */
 .root {
-    /* ---- Background ---- */
-    -color-bg-primary:    #0F172A;
-    -color-bg-secondary:  #111827;
-    -color-surface:       #1E293B;
+    /* ---- Backgrounds ---- */
+    -color-bg-primary:    #0F172A;   /* app canvas            */
+    -color-bg-secondary:  #111827;   /* sidebar / rails       */
+    -color-surface:       #1E293B;   /* raised surfaces/cards */
+    -color-surface-2:     #24334A;   /* hover / subtle raise  */
 
     /* ---- Accents ---- */
     -color-primary:       #6366F1;
@@ -26,61 +49,619 @@
     -color-text-primary:   #F8FAFC;
     -color-text-secondary: #CBD5E1;
     -color-text-muted:     #64748B;
+    -color-on-primary:     #F8FAFC;  /* text on primary fills */
 
     /* ---- Border ---- */
-    -color-border:        #334155;
+    -color-border:         #334155;
+    -color-border-strong:  #3E4C63;
 
-    -fx-font-family: "Segoe UI", "Inter", "Roboto", sans-serif;
+    /* Tame JavaFX's default blue focus glow so any residual
+       control focus ring blends with our own accent. */
+    -fx-focus-color:       -color-primary;
+    -fx-faint-focus-color: rgba(99, 102, 241, 0.18);
+
+    -fx-font-family: "Segoe UI", "Inter", "Roboto", "Helvetica Neue", sans-serif;
+    -fx-font-size: 14px;
     -fx-background-color: -color-bg-primary;
 }
 
-/* App background canvas with generous padding. */
+/* ------------------------------------------------------------
+   2. GLOBAL / ROOT
+   ------------------------------------------------------------ */
 .app-root {
     -fx-background-color: -color-bg-primary;
-    -fx-padding: 48;
 }
 
-/* Centered surface card: rounded corners, subtle border + shadow. */
-.card {
-    -fx-background-color: -color-surface;
-    -fx-background-radius: 16;
-    -fx-border-color: -color-border;
-    -fx-border-radius: 16;
-    -fx-border-width: 1;
-    -fx-padding: 48 56 48 56;
-    -fx-spacing: 16;
+/* A reusable text-selection look for all text inputs. */
+.text-input {
+    -fx-highlight-fill: rgba(99, 102, 241, 0.45);
+    -fx-highlight-text-fill: -color-text-primary;
+}
+
+/* ------------------------------------------------------------
+   3. SCROLLBARS — slim, unobtrusive, theme-coloured.
+   ------------------------------------------------------------ */
+.scroll-pane {
+    -fx-background-color: transparent;
+    -fx-background-insets: 0;
+    -fx-padding: 0;
+}
+.scroll-pane > .viewport {
+    -fx-background-color: transparent;
+}
+.scroll-bar:vertical,
+.scroll-bar:horizontal {
+    -fx-background-color: transparent;
+    -fx-padding: 2;
+}
+.scroll-bar:vertical .track,
+.scroll-bar:horizontal .track {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+}
+.scroll-bar:vertical .thumb,
+.scroll-bar:horizontal .thumb {
+    -fx-background-color: -color-border;
+    -fx-background-radius: 999;
+    -fx-background-insets: 2;
+}
+.scroll-bar:vertical .thumb:hover,
+.scroll-bar:horizontal .thumb:hover {
+    -fx-background-color: -color-border-strong;
+}
+.scroll-bar:vertical .thumb:pressed,
+.scroll-bar:horizontal .thumb:pressed {
+    -fx-background-color: -color-text-muted;
+}
+/* Hide the increment/decrement arrows for a clean, modern rail. */
+.scroll-bar .increment-button,
+.scroll-bar .decrement-button {
+    -fx-background-color: transparent;
+    -fx-padding: 0;
+}
+.scroll-bar .increment-arrow,
+.scroll-bar .decrement-arrow {
+    -fx-background-color: transparent;
+    -fx-padding: 0;
+}
+.corner {
+    -fx-background-color: transparent;
+}
+
+/* ------------------------------------------------------------
+   4. APP SHELL — title bar, split, panels
+   ------------------------------------------------------------ */
+
+/* Top application bar: brand on the left, connection state on the right. */
+.title-bar {
+    -fx-background-color: -color-bg-secondary;
+    -fx-border-color: transparent transparent -color-border transparent;
+    -fx-border-width: 0 0 1 0;
+    -fx-padding: 12 18 12 18;
+    -fx-alignment: center-left;
+    -fx-spacing: 12;
+}
+.brand-mark {
+    -fx-min-width: 30;
+    -fx-min-height: 30;
+    -fx-max-width: 30;
+    -fx-max-height: 30;
+    -fx-background-color: linear-gradient(to bottom right, -color-primary, -color-cyan);
+    -fx-background-radius: 9;
     -fx-alignment: center;
-    -fx-max-width: 520;
-    -fx-max-height: 340;
-    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.45), 32, 0.2, 0, 12);
+    -fx-effect: dropshadow(gaussian, rgba(99, 102, 241, 0.45), 12, 0.1, 0, 2);
 }
-
-.app-title {
+.brand-mark .brand-glyph {
+    -fx-text-fill: -color-on-primary;
+    -fx-font-size: 15px;
+    -fx-font-weight: bold;
+}
+.brand-text {
     -fx-text-fill: -color-text-primary;
-    -fx-font-size: 34px;
+    -fx-font-size: 15px;
     -fx-font-weight: bold;
 }
 
-.app-subtitle {
-    -fx-text-fill: -color-text-secondary;
-    -fx-font-size: 15px;
+/* The sidebar | chat divider region. */
+.content-split {
+    -fx-background-color: -color-bg-primary;
 }
 
-/* Small rounded "pill" using the success accent. */
-.status-pill {
-    -fx-text-fill: -color-success;
-    -fx-background-color: rgba(34, 197, 94, 0.12);
+/* Right-hand chat column. */
+.chat-pane {
+    -fx-background-color: -color-bg-primary;
+}
+
+/* ------------------------------------------------------------
+   5. STATUS INDICATOR — dot + label, colour by state.
+   ------------------------------------------------------------ */
+.status-indicator {
+    -fx-alignment: center;
+    -fx-spacing: 8;
+    -fx-padding: 5 12 5 11;
     -fx-background-radius: 999;
-    -fx-border-color: rgba(34, 197, 94, 0.35);
     -fx-border-radius: 999;
     -fx-border-width: 1;
-    -fx-padding: 6 14 6 14;
+    -fx-background-color: -color-surface;
+    -fx-border-color: -color-border;
+}
+.status-indicator .status-dot {
+    -fx-min-width: 9;
+    -fx-min-height: 9;
+    -fx-max-width: 9;
+    -fx-max-height: 9;
+    -fx-background-radius: 999;
+    -fx-background-color: -color-text-muted;
+}
+.status-indicator .status-label {
+    -fx-font-size: 12.5px;
+    -fx-font-weight: bold;
+    -fx-text-fill: -color-text-secondary;
+}
+/* Connected (success) */
+.status-indicator.status-connected {
+    -fx-background-color: rgba(34, 197, 94, 0.12);
+    -fx-border-color: rgba(34, 197, 94, 0.35);
+}
+.status-indicator.status-connected .status-dot {
+    -fx-background-color: -color-success;
+    -fx-effect: dropshadow(gaussian, rgba(34, 197, 94, 0.75), 8, 0.4, 0, 0);
+}
+.status-indicator.status-connected .status-label {
+    -fx-text-fill: -color-success;
+}
+/* Connecting (warning) */
+.status-indicator.status-connecting {
+    -fx-background-color: rgba(245, 158, 11, 0.12);
+    -fx-border-color: rgba(245, 158, 11, 0.35);
+}
+.status-indicator.status-connecting .status-dot {
+    -fx-background-color: -color-warning;
+}
+.status-indicator.status-connecting .status-label {
+    -fx-text-fill: -color-warning;
+}
+/* Disconnected (error) */
+.status-indicator.status-disconnected {
+    -fx-background-color: rgba(239, 68, 68, 0.12);
+    -fx-border-color: rgba(239, 68, 68, 0.35);
+}
+.status-indicator.status-disconnected .status-dot {
+    -fx-background-color: -color-error;
+}
+.status-indicator.status-disconnected .status-label {
+    -fx-text-fill: -color-error;
+}
+
+/* ------------------------------------------------------------
+   6. AVATARS + PRESENCE
+   ------------------------------------------------------------ */
+.avatar {
+    -fx-alignment: center;
+    -fx-background-radius: 999;
+    -fx-min-width: 40;
+    -fx-min-height: 40;
+    -fx-max-width: 40;
+    -fx-max-height: 40;
+}
+.avatar .avatar-initials {
+    -fx-text-fill: -color-on-primary;
+    -fx-font-size: 15px;
+    -fx-font-weight: bold;
+}
+.avatar.avatar-sm {
+    -fx-min-width: 32;
+    -fx-min-height: 32;
+    -fx-max-width: 32;
+    -fx-max-height: 32;
+}
+.avatar.avatar-sm .avatar-initials {
     -fx-font-size: 13px;
+}
+.avatar.avatar-lg {
+    -fx-min-width: 44;
+    -fx-min-height: 44;
+    -fx-max-width: 44;
+    -fx-max-height: 44;
+}
+
+/* Global/channel avatar uses the brand gradient + a "#" glyph. */
+.avatar.avatar-global {
+    -fx-background-color: linear-gradient(to bottom right, -color-primary, -color-cyan);
+}
+
+/* Deterministic avatar palette (chosen by name hash in Java). */
+.avatar.avatar-c0 { -fx-background-color: linear-gradient(to bottom right, #6366F1, #4F46E5); }
+.avatar.avatar-c1 { -fx-background-color: linear-gradient(to bottom right, #22D3EE, #0EA5E9); }
+.avatar.avatar-c2 { -fx-background-color: linear-gradient(to bottom right, #22C55E, #16A34A); }
+.avatar.avatar-c3 { -fx-background-color: linear-gradient(to bottom right, #F59E0B, #D97706); }
+.avatar.avatar-c4 { -fx-background-color: linear-gradient(to bottom right, #EC4899, #DB2777); }
+.avatar.avatar-c5 { -fx-background-color: linear-gradient(to bottom right, #A78BFA, #7C3AED); }
+.avatar.avatar-c6 { -fx-background-color: linear-gradient(to bottom right, #2DD4BF, #0D9488); }
+.avatar.avatar-c7 { -fx-background-color: linear-gradient(to bottom right, #FB7185, #E11D48); }
+
+/* Presence dot overlaid on the avatar (ringed to read on any bg). */
+.presence-dot {
+    -fx-min-width: 13;
+    -fx-min-height: 13;
+    -fx-max-width: 13;
+    -fx-max-height: 13;
+    -fx-background-radius: 999;
+    -fx-border-radius: 999;
+    -fx-border-width: 2.5;
+    -fx-border-color: -color-bg-secondary;
+    -fx-background-color: -color-text-muted;
+}
+.presence-dot.presence-online  { -fx-background-color: -color-success; }
+.presence-dot.presence-away    { -fx-background-color: -color-warning; }
+.presence-dot.presence-offline { -fx-background-color: -color-text-muted; }
+
+/* When a presence dot sits on the darker surface (e.g. chat header). */
+.on-surface .presence-dot { -fx-border-color: -color-surface; }
+
+/* ------------------------------------------------------------
+   7. SIDEBAR
+   ------------------------------------------------------------ */
+.sidebar {
+    -fx-background-color: -color-bg-secondary;
+    -fx-border-color: transparent -color-border transparent transparent;
+    -fx-border-width: 0 1 0 0;
+    -fx-min-width: 264;
+    -fx-pref-width: 288;
+    -fx-max-width: 360;
+}
+.sidebar-header {
+    -fx-padding: 18 16 10 16;
+    -fx-spacing: 12;
+}
+.sidebar-title {
+    -fx-text-fill: -color-text-primary;
+    -fx-font-size: 17px;
     -fx-font-weight: bold;
 }
 
-.app-footer {
+/* Search field */
+.search-field {
+    -fx-background-color: -color-surface;
+    -fx-background-radius: 10;
+    -fx-border-radius: 10;
+    -fx-border-width: 1;
+    -fx-border-color: -color-border;
+    -fx-text-fill: -color-text-primary;
+    -fx-prompt-text-fill: -color-text-muted;
+    -fx-font-size: 13.5px;
+    -fx-padding: 8 12 8 12;
+    -fx-highlight-fill: rgba(99, 102, 241, 0.45);
+    -fx-highlight-text-fill: -color-text-primary;
+}
+.search-field:hover {
+    -fx-border-color: -color-border-strong;
+}
+.search-field:focused {
+    -fx-border-color: -color-primary;
+    -fx-background-color: -color-bg-primary;
+}
+
+/* Section label, e.g. "ONLINE — 3" */
+.sidebar-section {
+    -fx-text-fill: -color-text-muted;
+    -fx-font-size: 11.5px;
+    -fx-font-weight: bold;
+    -fx-padding: 14 10 6 12;
+}
+
+.sidebar-scroll {
+    -fx-background-color: transparent;
+}
+.sidebar-list {
+    -fx-padding: 4 10 12 10;
+    -fx-spacing: 2;
+    -fx-background-color: transparent;
+}
+
+/* A single conversation / user row. */
+.sidebar-item {
+    -fx-background-radius: 10;
+    -fx-padding: 8 10 8 10;
+    -fx-spacing: 12;
+    -fx-alignment: center-left;
+    -fx-cursor: hand;
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-border-width: 1;
+    -fx-border-radius: 10;
+}
+.sidebar-item:hover {
+    -fx-background-color: -color-surface;
+}
+.sidebar-item:focused {
+    -fx-border-color: -color-primary;
+}
+.sidebar-item:selected {
+    -fx-background-color: -color-surface;
+    -fx-border-color: -color-border-strong;
+}
+.sidebar-item .sidebar-item-name {
+    -fx-text-fill: -color-text-secondary;
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+}
+.sidebar-item .sidebar-item-sub {
     -fx-text-fill: -color-text-muted;
     -fx-font-size: 12px;
-    -fx-padding: 8 0 0 0;
+}
+.sidebar-item:selected .sidebar-item-name {
+    -fx-text-fill: -color-text-primary;
+}
+/* Small accent bar shown on the selected row. */
+.sidebar-item .selection-bar {
+    -fx-min-width: 3;
+    -fx-max-width: 3;
+    -fx-min-height: 20;
+    -fx-background-radius: 999;
+    -fx-background-color: transparent;
+}
+.sidebar-item:selected .selection-bar {
+    -fx-background-color: -color-primary;
+}
+/* Unread pill on a row. */
+.badge {
+    -fx-background-color: -color-primary;
+    -fx-background-radius: 999;
+    -fx-text-fill: -color-on-primary;
+    -fx-font-size: 11px;
+    -fx-font-weight: bold;
+    -fx-padding: 1 7 2 7;
+}
+
+/* ------------------------------------------------------------
+   8. CHAT HEADER
+   ------------------------------------------------------------ */
+.chat-header {
+    -fx-background-color: -color-bg-secondary;
+    -fx-border-color: transparent transparent -color-border transparent;
+    -fx-border-width: 0 0 1 0;
+    -fx-padding: 12 18 12 18;
+    -fx-spacing: 12;
+    -fx-alignment: center-left;
+}
+.chat-header-title {
+    -fx-text-fill: -color-text-primary;
+    -fx-font-size: 16px;
+    -fx-font-weight: bold;
+}
+.chat-header-sub {
+    -fx-text-fill: -color-text-muted;
+    -fx-font-size: 12.5px;
+}
+
+/* Icon-only ghost button (header actions). */
+.icon-button {
+    -fx-background-color: transparent;
+    -fx-background-radius: 9;
+    -fx-border-radius: 9;
+    -fx-text-fill: -color-text-secondary;
+    -fx-font-size: 16px;
+    -fx-min-width: 34;
+    -fx-min-height: 34;
+    -fx-cursor: hand;
+    -fx-padding: 0;
+}
+.icon-button:hover {
+    -fx-background-color: -color-surface;
+    -fx-text-fill: -color-text-primary;
+}
+.icon-button:pressed {
+    -fx-background-color: -color-surface-2;
+}
+.icon-button:focused {
+    -fx-border-color: -color-primary;
+    -fx-border-width: 1;
+}
+
+/* ------------------------------------------------------------
+   9. MESSAGE LIST
+   ------------------------------------------------------------ */
+.messages-scroll {
+    -fx-background-color: transparent;
+}
+.messages-box {
+    -fx-padding: 20 24 16 24;
+    -fx-spacing: 3;
+    -fx-background-color: transparent;
+}
+
+/* Centered date divider with hairlines on either side. */
+.date-divider {
+    -fx-alignment: center;
+    -fx-spacing: 12;
+    -fx-padding: 14 0 10 0;
+}
+.date-divider .divider-line {
+    -fx-pref-height: 1;
+    -fx-min-height: 1;
+    -fx-max-height: 1;
+    -fx-background-color: -color-border;
+}
+.date-divider .divider-label {
+    -fx-text-fill: -color-text-muted;
+    -fx-font-size: 11.5px;
+    -fx-font-weight: bold;
+}
+
+/* One message row (avatar + stacked meta/bubble). */
+.message-row {
+    -fx-spacing: 10;
+    -fx-padding: 6 0 0 0;
+}
+.message-row.grouped {
+    -fx-padding: 1 0 0 0;
+}
+.message-row-incoming { -fx-alignment: top-left; }
+.message-row-outgoing { -fx-alignment: top-right; }
+
+.message-meta {
+    -fx-spacing: 8;
+    -fx-alignment: baseline-left;
+    -fx-padding: 0 0 3 2;
+}
+.message-author {
+    -fx-text-fill: -color-text-secondary;
+    -fx-font-size: 12.5px;
+    -fx-font-weight: bold;
+}
+.message-time {
+    -fx-text-fill: -color-text-muted;
+    -fx-font-size: 11px;
+}
+
+/* Bubbles */
+.bubble {
+    -fx-padding: 9 13 9 13;
+    -fx-background-radius: 14;
+}
+.bubble .bubble-text {
+    -fx-font-size: 14px;
+}
+.bubble-incoming {
+    -fx-background-color: -color-surface;
+    -fx-border-color: -color-border;
+    -fx-border-width: 1;
+    -fx-border-radius: 14;
+    -fx-background-radius: 14 14 14 4;
+}
+.bubble-incoming .bubble-text {
+    -fx-text-fill: -color-text-primary;
+}
+.bubble-outgoing {
+    -fx-background-color: linear-gradient(to bottom right, -color-primary, #4F46E5);
+    -fx-background-radius: 14 14 4 14;
+    -fx-effect: dropshadow(gaussian, rgba(79, 70, 229, 0.35), 12, 0.05, 0, 3);
+}
+.bubble-outgoing .bubble-text {
+    -fx-text-fill: -color-on-primary;
+}
+
+/* System / info line (centered, quiet). */
+.message-row-system {
+    -fx-alignment: center;
+    -fx-padding: 8 0 8 0;
+}
+.bubble-system {
+    -fx-background-color: -color-surface;
+    -fx-background-radius: 999;
+    -fx-border-color: -color-border;
+    -fx-border-width: 1;
+    -fx-border-radius: 999;
+    -fx-padding: 5 14 5 14;
+}
+.bubble-system .bubble-text {
+    -fx-text-fill: -color-text-muted;
+    -fx-font-size: 12px;
+}
+
+/* ------------------------------------------------------------
+   10. COMPOSER
+   ------------------------------------------------------------ */
+.composer-bar {
+    -fx-background-color: -color-bg-secondary;
+    -fx-border-color: -color-border transparent transparent transparent;
+    -fx-border-width: 1 0 0 0;
+    -fx-padding: 14 18 16 18;
+}
+/* Rounded pill wrapping the input + send button. */
+.composer {
+    -fx-background-color: -color-surface;
+    -fx-background-radius: 14;
+    -fx-border-radius: 14;
+    -fx-border-width: 1;
+    -fx-border-color: -color-border;
+    -fx-padding: 5 6 5 8;
+    -fx-spacing: 6;
+    -fx-alignment: center;
+}
+.composer:focus-within {
+    -fx-border-color: -color-primary;
+    -fx-effect: dropshadow(gaussian, rgba(99, 102, 241, 0.25), 14, 0.0, 0, 0);
+}
+.composer-input {
+    -fx-background-color: transparent;
+    -fx-text-fill: -color-text-primary;
+    -fx-prompt-text-fill: -color-text-muted;
+    -fx-font-size: 14px;
+    -fx-padding: 7 6 7 6;
+    -fx-highlight-fill: rgba(99, 102, 241, 0.45);
+    -fx-highlight-text-fill: -color-text-primary;
+}
+.composer-input:focused {
+    -fx-background-color: transparent;
+}
+
+/* Primary send button. */
+.send-button {
+    -fx-background-color: -color-primary;
+    -fx-background-radius: 10;
+    -fx-text-fill: -color-on-primary;
+    -fx-font-size: 13.5px;
+    -fx-font-weight: bold;
+    -fx-padding: 8 16 8 16;
+    -fx-cursor: hand;
+    -fx-effect: dropshadow(gaussian, rgba(99, 102, 241, 0.35), 10, 0.05, 0, 2);
+}
+.send-button:hover {
+    -fx-background-color: -color-primary-hover;
+}
+.send-button:pressed {
+    -fx-background-color: #4F46E5;
+    -fx-effect: none;
+}
+.send-button:focused {
+    -fx-border-color: -color-cyan;
+    -fx-border-width: 1;
+    -fx-border-radius: 10;
+    -fx-background-insets: 0;
+}
+.send-button:disabled {
+    -fx-background-color: -color-surface-2;
+    -fx-text-fill: -color-text-muted;
+    -fx-effect: none;
+    -fx-opacity: 1;
+    -fx-cursor: default;
+}
+
+/* ------------------------------------------------------------
+   11. EMPTY STATE
+   ------------------------------------------------------------ */
+.empty-state {
+    -fx-alignment: center;
+    -fx-spacing: 14;
+    -fx-padding: 40;
+}
+.empty-state .empty-icon {
+    -fx-min-width: 72;
+    -fx-min-height: 72;
+    -fx-max-width: 72;
+    -fx-max-height: 72;
+    -fx-background-radius: 999;
+    -fx-background-color: -color-surface;
+    -fx-border-color: -color-border;
+    -fx-border-width: 1;
+    -fx-border-radius: 999;
+    -fx-alignment: center;
+}
+.empty-state .empty-icon .empty-glyph {
+    -fx-font-size: 30px;
+    -fx-text-fill: -color-primary-hover;
+}
+.empty-state .empty-title {
+    -fx-text-fill: -color-text-secondary;
+    -fx-font-size: 16px;
+    -fx-font-weight: bold;
+}
+.empty-state .empty-sub {
+    -fx-text-fill: -color-text-muted;
+    -fx-font-size: 13px;
+    -fx-text-alignment: center;
+    -fx-wrap-text: true;
+    -fx-max-width: 320;
 }

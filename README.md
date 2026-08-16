@@ -14,14 +14,14 @@ The project is a **multi-module Maven build** with a clean separation of concern
 |----------|-------------------------------------------------------------------------------|
 | `common` | Shared protocol/model code (`Message`, `MessageType`, `Protocol`).            |
 | `server` | Multi-client TCP server: accepts connections, tracks users, routes messages.  |
-| `client` | JavaFX desktop app; reusable client networking layer (`client.net`) done, chat UI next. |
+| `client` | JavaFX desktop app: reusable networking layer (`client.net`) plus a modern, component-based chat UI (`client.ui`). |
 
 ```
 lan-messenger/
 ├── pom.xml       # Parent (aggregator) POM
 ├── common/       # Shared protocol + model (Message, MessageType, Protocol)
 ├── server/       # Multi-client TCP server (ChatServer, ClientHandler, ...)
-├── client/       # JavaFX desktop client (networking layer done; UI shell)
+├── client/       # JavaFX desktop client (networking layer + component-based UI)
 └── README.md
 ```
 
@@ -48,6 +48,28 @@ a `ChatClientListener`; because those callbacks fire off-thread, the JavaFX brid
 with `Platform.runLater`. Teardown is funnelled through one idempotent path, so a
 disconnect — whether local, server-initiated, or caused by an I/O error — notifies
 the listener exactly once.
+
+### The client UI
+
+The desktop UI lives in `client.ui` and is built from small, reusable components
+in `client.ui.components`, composed by `MainView` into a modern messenger shell:
+a title bar with a live connection `StatusIndicator`, a searchable conversation
+`Sidebar`, a `ChatHeader`, a scrolling `MessageListView` (date dividers, grouped
+`MessageBubble`s, an `EmptyState`, and auto-scroll) and a `MessageComposer`
+(Enter-to-send, disabled while empty). Presence dots and coloured `Avatar`s round
+out the look.
+
+All colours, spacing and interactive states (hover, focus, pressed, disabled,
+selected, empty) are defined once in a centralised design-token stylesheet,
+`theme.css`; Java assigns style classes only and never hard-codes colours, so the
+whole app can be re-skinned from one place. The layout is responsive down to the
+minimum window size, with bubbles that reflow as the window resizes and animations
+kept deliberately subtle.
+
+This phase establishes the visual system only: the UI runs on in-memory sample
+data (`SampleData`) via lightweight view-models (`ChatUser`, `ChatMessage`,
+`Conversation`) and is **not** yet wired to `client.net` — connecting the two is a
+later phase.
 
 ### Message protocol
 
@@ -110,8 +132,9 @@ mvn -pl server exec:java -Dexec.args="5050"
 Press `Ctrl+C` to stop the server; it disconnects clients and shuts down
 gracefully.
 
-**Start the client** (opens the JavaFX window — a UI shell for now; the client
-networking layer is in place and the chat UI that uses it arrives next):
+**Start the client** (opens the JavaFX messenger window — the full UI shell:
+title bar, sidebar, chat transcript and composer. It currently runs on sample
+data; the networking layer is in place and will be connected in a later phase):
 
 ```bash
 mvn -pl client javafx:run
@@ -161,6 +184,18 @@ pre-release (`1.0-SNAPSHOT`), so current work lives under **Unreleased**.
   marshals callbacks back onto it via `Platform.runLater`. Supports server IP,
   port and username, with connection-error handling and safe, idempotent
   disconnects.
+- **Modern JavaFX messenger UI** (`client`, packages `client.ui` and
+  `client.ui.components`): a polished, dark-themed shell composed by `MainView` —
+  a title bar with a connection `StatusIndicator`, a searchable `Sidebar`
+  (`SidebarItem` rows with avatars, presence dots and unread badges), a
+  `ChatHeader`, a `MessageListView` (date dividers, grouped `MessageBubble`s,
+  auto-scroll and an `EmptyState`) and a `MessageComposer` (Enter-to-send, disabled
+  while empty). Reusable `Avatar` and `StatusIndicator` components and view-models
+  (`ChatUser`, `ChatMessage`, `Conversation`) round it out. Every colour, radius and
+  interactive state (hover, focus, pressed, disabled, selected, empty) is defined
+  once in a centralised design-token stylesheet (`theme.css`); the layout is
+  responsive with reflowing bubbles and subtle animations. Runs on in-memory
+  `SampleData` and is intentionally not yet wired to `client.net`.
 - **Automated tests** (JUnit 5): protocol unit tests plus real-socket integration
   tests for multi-client connect, message routing, and disconnect resilience;
   client-side integration tests exercise the networking layer against a live
@@ -169,6 +204,10 @@ pre-release (`1.0-SNAPSHOT`), so current work lives under **Unreleased**.
 #### Changed
 - Replaced the placeholder `ServerApp` with `ServerApplication`, adding the
   shutdown hook and compact single-line logging.
+- Replaced the client's placeholder launch card with the full messenger layout
+  (`MainView`); `ClientApp` now loads the design system through `Theme` and, under
+  `LANMSG_SMOKE=1`, runs a self-closing multi-size layout check to guard against
+  size-dependent regressions.
 
 ### Project setup
 
