@@ -17,8 +17,14 @@
     <name>LAN Messenger :: Client</name>
     <description>JavaFX desktop application for the LAN Messenger.</description>
 
+    <properties>
+        <!-- Test stack, matching the server module so tests run consistently. -->
+        <junit.version>5.12.1</junit.version>
+        <surefire.plugin.version>3.5.4</surefire.plugin.version>
+    </properties>
+
     <dependencies>
-        <!-- Shared protocol constants. -->
+        <!-- Shared protocol constants and message model. -->
         <dependency>
             <groupId>com.lanmessenger</groupId>
             <artifactId>common</artifactId>
@@ -30,6 +36,30 @@
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-controls</artifactId>
             <version>${javafx.version}</version>
+        </dependency>
+
+        <!-- Test scope only: the client networking integration tests exercise the
+             layer against the real ChatServer over loopback sockets. This never
+             leaks into the client's runtime/packaged artifact. -->
+        <dependency>
+            <groupId>com.lanmessenger</groupId>
+            <artifactId>server</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- JUnit 5 for the networking integration tests (test scope only). -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-api</artifactId>
+            <version>${junit.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-engine</artifactId>
+            <version>${junit.version}</version>
+            <scope>test</scope>
         </dependency>
     </dependencies>
 
@@ -53,6 +83,13 @@
                         <option>--enable-native-access=javafx.graphics</option>
                     </options>
                 </configuration>
+            </plugin>
+
+            <!-- Pinned so JUnit 5 tests run consistently across environments. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>${surefire.plugin.version}</version>
             </plugin>
         </plugins>
     </build>

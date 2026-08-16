@@ -14,14 +14,14 @@ The project is a **multi-module Maven build** with a clean separation of concern
 |----------|-------------------------------------------------------------------------------|
 | `common` | Shared protocol/model code (`Message`, `MessageType`, `Protocol`).            |
 | `server` | Multi-client TCP server: accepts connections, tracks users, routes messages.  |
-| `client` | JavaFX desktop application (UI shell for now; networking in a later phase).   |
+| `client` | JavaFX desktop app; reusable client networking layer (`client.net`) done, chat UI next. |
 
 ```
 lan-messenger/
 ├── pom.xml       # Parent (aggregator) POM
 ├── common/       # Shared protocol + model (Message, MessageType, Protocol)
 ├── server/       # Multi-client TCP server (ChatServer, ClientHandler, ...)
-├── client/       # JavaFX desktop client (UI shell for now)
+├── client/       # JavaFX desktop client (networking layer done; UI shell)
 └── README.md
 ```
 
@@ -33,6 +33,21 @@ are kept in a thread-safe registry, and every connection is fully isolated: one
 client dropping — even abruptly — never disturbs the others or the server. Stopping
 the process shuts the listening socket, disconnects clients, and drains the pool
 gracefully.
+
+### How the client connects
+
+The client's networking lives in the `client.net` package, deliberately free of
+any JavaFX types so it can be unit-tested headlessly. `ChatClient` is the façade
+the UI will use: it opens a `ServerConnection` (a TCP socket wrapped in UTF-8 line
+streams), sends the `LOGIN`, then runs a `MessageReader` on a dedicated background
+thread so the blocking read loop never touches the UI. Outbound writes go through
+a second background thread via `MessageSender`, so even a stalled socket cannot
+freeze the interface. Incoming messages and lifecycle events are reported through
+a `ChatClientListener`; because those callbacks fire off-thread, the JavaFX bridge
+`FxChatClientListener` re-dispatches each one onto the JavaFX Application Thread
+with `Platform.runLater`. Teardown is funnelled through one idempotent path, so a
+disconnect — whether local, server-initiated, or caused by an I/O error — notifies
+the listener exactly once.
 
 ### Message protocol
 
@@ -95,8 +110,8 @@ mvn -pl server exec:java -Dexec.args="5050"
 Press `Ctrl+C` to stop the server; it disconnects clients and shuts down
 gracefully.
 
-**Start the client** (opens the JavaFX window — a UI shell for now; chat and
-networking arrive in a later phase):
+**Start the client** (opens the JavaFX window — a UI shell for now; the client
+networking layer is in place and the chat UI that uses it arrives next):
 
 ```bash
 mvn -pl client javafx:run
@@ -114,7 +129,10 @@ mvn test
 
 The `server` module includes protocol unit tests and real-socket integration
 tests that cover multiple clients connecting, message routing, and both clean and
-abrupt disconnects.
+abrupt disconnects. The `client` module adds integration tests that drive the
+networking layer against a real server over loopback sockets, verifying connect,
+send, receive, multiple concurrent clients, and safe local and server-side
+disconnects.
 
 ---
 
@@ -136,8 +154,17 @@ pre-release (`1.0-SNAPSHOT`), so current work lives under **Unreleased**.
 - **Line-based message protocol** (`common`): `Message` and `MessageType` define a
   simple, extensible wire format for login, global/private messages, user-list and
   presence notifications, and errors.
+- **Client networking layer** (`client`, package `client.net`): a UI-agnostic
+  `ChatClient` façade over `ServerConnection`, `MessageSender` and a background
+  `MessageReader`, reporting through a `ChatClientListener`. Receiving (and
+  sending) runs off the JavaFX Application Thread, and `FxChatClientListener`
+  marshals callbacks back onto it via `Platform.runLater`. Supports server IP,
+  port and username, with connection-error handling and safe, idempotent
+  disconnects.
 - **Automated tests** (JUnit 5): protocol unit tests plus real-socket integration
-  tests for multi-client connect, message routing, and disconnect resilience.
+  tests for multi-client connect, message routing, and disconnect resilience;
+  client-side integration tests exercise the networking layer against a live
+  server (connect, send/receive, multiple clients, and disconnect handling).
 
 #### Changed
 - Replaced the placeholder `ServerApp` with `ServerApplication`, adding the
