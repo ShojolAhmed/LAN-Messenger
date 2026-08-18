@@ -82,6 +82,11 @@ public final class MessageComposer extends VBox {
         this.onSend = callback == null ? text -> { } : callback;
     }
 
+    /** Sets the input's placeholder text (e.g. to name the active conversation). */
+    public void setPrompt(String prompt) {
+        input.setPromptText(prompt == null || prompt.isBlank() ? "Type a message\u2026" : prompt);
+    }
+
     /** Moves keyboard focus to the input. */
     public void focusInput() {
         input.requestFocus();

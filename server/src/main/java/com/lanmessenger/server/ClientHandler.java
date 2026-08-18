@@ -194,16 +194,45 @@ public final class ClientHandler implements Runnable {
         clientManager.broadcast(Message.global(username, capped), username);
     }
 
+    /**
+     * Validates and delivers a one-to-one private message to a single recipient.
+     *
+     * <p>Like {@link #handleGlobalMessage(String)} it re-stamps the note with this
+     * connection's authenticated {@link #username} (so a client can never spoof
+     * another sender), drops blank content and truncates over-long content to
+     * {@link Protocol#MAX_MESSAGE_LENGTH}. It never broadcasts: the message is sent
+     * only to the named recipient. The sender shows its own copy locally, so the
+     * server does not echo it back.
+     *
+     * <p>Failure modes are reported to the sender with a
+     * {@link Message#deliveryError(String, String)} carrying the intended
+     * recipient, so the client can show the notice in the right conversation:
+     * an empty recipient, sending to yourself, or a recipient who is not (or no
+     * longer) online.
+     */
     private void deliverPrivate(Message message) {
         String recipient = message.recipient();
         if (recipient.isEmpty()) {
             send(Message.error("private message requires a recipient"));
             return;
         }
+        if (recipient.equals(username)) {
+            // The UI never offers you as your own recipient; guard anyway so a
+            // hand-crafted message can't loop a private note back to its sender.
+            send(Message.deliveryError(recipient, "you cannot send a private message to yourself"));
+            return;
+        }
+        String content = message.content();
+        if (content == null || content.isBlank()) {
+            return; // ignore empty/whitespace-only messages, mirroring global chat
+        }
+        String capped = content.length() > Protocol.MAX_MESSAGE_LENGTH
+                ? content.substring(0, Protocol.MAX_MESSAGE_LENGTH)
+                : content;
         boolean delivered = clientManager.sendToUser(
-                recipient, Message.privateMessage(username, recipient, message.content()));
+                recipient, Message.privateMessage(username, recipient, capped));
         if (!delivered) {
-            send(Message.error("user '" + recipient + "' is not online"));
+            send(Message.deliveryError(recipient, "user '" + recipient + "' is not online"));
         }
     }
 

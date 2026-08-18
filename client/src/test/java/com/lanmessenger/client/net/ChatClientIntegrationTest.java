@@ -154,6 +154,20 @@ class ChatClientIntegrationTest {
     }
 
     @Test
+    @DisplayName("a private message to an offline user reports a tagged delivery error")
+    void privateMessageToOfflineUserReportsError() throws Exception {
+        RecordingListener alice = new RecordingListener();
+        ChatClient aliceClient = connectAndSettle(alice, "alice");
+
+        aliceClient.sendPrivateMessage("ghost", "are you there?");
+
+        Message error = alice.awaitType(MessageType.ERROR);
+        assertEquals("ghost", error.recipient(),
+                "the delivery error should carry the recipient so the UI can show it in the right conversation");
+        assertTrue(error.content().toLowerCase().contains("not online"));
+    }
+
+    @Test
     @DisplayName("a global message is delivered to every other client")
     void globalMessageReachesAllOtherClients() throws Exception {
         RecordingListener alice = new RecordingListener();

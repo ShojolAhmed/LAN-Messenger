@@ -55,7 +55,7 @@ public class ClientApp extends Application {
 
     private void startSmokeTest(Stage stage) {
         ConnectView connectView = new ConnectView();
-        MainView mainView = new MainView("You", text -> { });
+        MainView mainView = new MainView("You", text -> { }, (recipient, text) -> { });
         seedSmokeTestChat(mainView);
 
         Scene scene = new Scene(connectView, 1080, 720);
@@ -83,6 +83,8 @@ public class ClientApp extends Application {
         mainView.receiveGlobalMessage("You", "Awesome \u2014 glad it's stable.", now);
         mainView.noteUserJoined("Nadia");
         mainView.receiveGlobalMessage("Nadia", "Hi all, just joined the channel.", now);
+        // A private message while Global is open raises an unread badge on Rahim's row.
+        mainView.receivePrivateMessage("Rahim", "Hey, are you around for a quick sync?", now);
     }
 
     /**

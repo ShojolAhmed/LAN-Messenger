@@ -188,10 +188,20 @@ public final class ClientController implements ChatClientListener {
         switch (message.type()) {
             case GLOBAL_MESSAGE ->
                     mainView.receiveGlobalMessage(message.sender(), message.content(), LocalDateTime.now());
+            case PRIVATE_MESSAGE ->
+                    mainView.receivePrivateMessage(message.sender(), message.content(), LocalDateTime.now());
             case USER_JOINED -> mainView.noteUserJoined(message.sender());
             case USER_LEFT -> mainView.noteUserLeft(message.sender());
             case USER_LIST -> mainView.setOnlineUsers(message.userListEntries());
-            default -> { /* ERROR and other types are not surfaced in the global chat */ }
+            case ERROR -> {
+                // A delivery error tagged with a recipient (e.g. a private message to
+                // someone who went offline) is surfaced in that conversation; generic,
+                // un-attributed errors are not shown to the user.
+                if (!message.recipient().isEmpty()) {
+                    mainView.notePrivateDeliveryFailure(message.recipient(), message.content());
+                }
+            }
+            default -> { /* other types are not surfaced in the messenger */ }
         }
     }
 
@@ -227,8 +237,8 @@ public final class ClientController implements ChatClientListener {
         phase = Phase.IN_APP;
 
         // A fresh messenger per login: it binds to the current connection's send
-        // method and starts with a clean transcript for this session.
-        mainView = new MainView(pendingUsername, client::sendGlobalMessage);
+        // methods and starts with a clean transcript for this session.
+        mainView = new MainView(pendingUsername, client::sendGlobalMessage, client::sendPrivateMessage);
         mainView.showConnected();
 
         if (scene != null) {

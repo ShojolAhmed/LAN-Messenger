@@ -21,6 +21,11 @@ import java.util.function.Consumer;
  * are built in, and a custom {@code :selected} pseudo-class is toggled from
  * {@link #setSelected(boolean)}. The row is keyboard-operable (focus traversable;
  * Enter/Space activate it) for accessibility.
+ *
+ * <p>The row is <b>live</b>: {@link #refreshUnread()} re-reads the conversation's
+ * unread count to show/hide the badge, and {@link #setSubtitle(String)} updates the
+ * secondary line (used to show a short preview of the latest message). This lets
+ * the sidebar reflect activity without being rebuilt from scratch on every event.
  */
 public final class SidebarItem extends HBox {
 
@@ -28,6 +33,8 @@ public final class SidebarItem extends HBox {
 
     private final Conversation conversation;
     private final Region selectionBar = new Region();
+    private final Label subtitle = new Label();
+    private final Label badge = new Label();
 
     /**
      * @param conversation the conversation this row represents
@@ -52,8 +59,8 @@ public final class SidebarItem extends HBox {
         name.getStyleClass().add("sidebar-item-name");
         name.setMaxWidth(Double.MAX_VALUE);
 
-        Label subtitle = new Label(conversation.sidebarSubtitle());
         subtitle.getStyleClass().add("sidebar-item-sub");
+        subtitle.setText(conversation.sidebarSubtitle());
         subtitle.setMaxWidth(Double.MAX_VALUE);
 
         VBox text = new VBox(name, subtitle);
@@ -61,13 +68,10 @@ public final class SidebarItem extends HBox {
         text.setMinWidth(0); // allow the labels to ellipsize instead of overflowing
         HBox.setHgrow(text, Priority.ALWAYS);
 
-        getChildren().addAll(avatar, text);
+        badge.getStyleClass().add("badge");
 
-        if (conversation.unread() > 0) {
-            Label badge = new Label(Integer.toString(conversation.unread()));
-            badge.getStyleClass().add("badge");
-            getChildren().add(badge);
-        }
+        getChildren().addAll(avatar, text, badge);
+        refreshUnread();
 
         setOnMouseClicked(event -> {
             requestFocus();
@@ -89,6 +93,23 @@ public final class SidebarItem extends HBox {
     /** Toggles the selected look (accent bar, brighter text, raised background). */
     public void setSelected(boolean selected) {
         pseudoClassStateChanged(SELECTED, selected);
+    }
+
+    /** Replaces the secondary line (e.g. a short preview of the latest message). */
+    public void setSubtitle(String text) {
+        subtitle.setText(text == null ? "" : text);
+    }
+
+    /**
+     * Re-reads {@link Conversation#unread()} and shows the count as a pill, or hides
+     * the badge entirely when there is nothing unread.
+     */
+    public void refreshUnread() {
+        int unread = conversation.unread();
+        boolean show = unread > 0;
+        badge.setText(show ? Integer.toString(unread) : "");
+        badge.setVisible(show);
+        badge.setManaged(show);
     }
 
     @Override

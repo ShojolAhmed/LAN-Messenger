@@ -129,6 +129,20 @@ public final class Message {
         return new Message(MessageType.ERROR, "", "", detail);
     }
 
+    /**
+     * Server &rarr; client: report an error that concerns a specific user &mdash;
+     * for example a {@link MessageType#PRIVATE_MESSAGE} that could not be
+     * delivered. The affected user is carried in the {@code recipient} field so
+     * the receiving client can surface the notice in the right conversation
+     * (rather than as an anonymous, un-attributable error).
+     *
+     * @param recipient the user the failed action was aimed at
+     * @param detail    a human-readable explanation
+     */
+    public static Message deliveryError(String recipient, String detail) {
+        return new Message(MessageType.ERROR, "", recipient, detail);
+    }
+
     // ---------------------------------------------------------------------
     // Wire encoding / decoding
     // ---------------------------------------------------------------------

@@ -89,7 +89,8 @@ cannot be opened it reports "Unable to connect to server." A connection that lat
 drops returns to the connection screen.
 
 On a successful login the messenger opens straight into the shared **Global chat**
-(below); one-to-one private messaging remains a later phase.
+(below), and every other connected user appears in the sidebar for **one-to-one
+private messaging**.
 
 ### Global chat
 
@@ -108,6 +109,35 @@ message length. Join and leave notices appear as quiet system lines and the head
 shows a live online count, all driven by the server's
 `USER_JOINED`/`USER_LEFT`/`USER_LIST` events. A dropped connection returns to the
 connection screen.
+
+### Online users and private messaging
+
+The server tracks every connected username and keeps all clients in step: as people
+join and leave it broadcasts `USER_JOINED`/`USER_LEFT` and answers `USER_LIST`
+requests. The client turns those events into a live **ONLINE** list in the sidebar —
+one row per other connected user, each with a green presence dot and a running
+count. You never appear as your own recipient.
+
+Clicking a user opens a **private conversation** with them; the sidebar also keeps
+the pinned **Global** room, and selecting any row switches the main chat panel.
+Each conversation has its **own history in memory**, so global and private threads —
+and different people's private threads — never mix. Sending routes to the active
+conversation: a global message is broadcast, while a private message is sent as a
+`PRIVATE_MESSAGE` addressed to a single recipient. The server looks up that
+recipient's connection and forwards the note **only** to them (never to everyone);
+the sender echoes its own copy locally, exactly as global chat does. A message that
+arrives in a conversation you are not currently viewing raises an **unread badge**
+on its sidebar row, cleared when you open it, and the active conversation is
+highlighted.
+
+Edge cases are handled end to end: a message to yourself or to someone who is not
+(or no longer) online is refused by the server and reported back to the sender —
+tagged with the intended recipient so the client can show a quiet "couldn't deliver"
+notice in the right conversation. When a peer you are chatting with goes offline
+their row is removed and the view falls back to Global, while their conversation and
+its history are kept in case they return. Private content is validated just like
+global chat (blank messages dropped, over-long ones truncated), and duplicate
+usernames are already prevented at login, so the online list stays unique.
 
 ### Message protocol
 
@@ -200,14 +230,18 @@ mvn test
 ```
 
 The `server` module includes protocol unit tests and real-socket integration
-tests that cover multiple clients connecting, message routing, and both clean and
-abrupt disconnects. The `client` module adds integration tests that drive the
-networking layer against a real server over loopback sockets, verifying connect,
-send, receive, multiple concurrent clients, safe local and server-side
-disconnects, a rejected duplicate-username login, and a clean failure when the
-server is unavailable. Fast, headless unit tests for `ConnectionValidator` cover
-the connection-screen input rules (empty/invalid username, invalid server IP, and
-out-of-range or non-numeric port).
+tests that cover multiple clients connecting, message routing (global broadcast and
+one-to-one private delivery), a private message to an unknown user or to yourself
+being reported with a recipient-tagged delivery error, and both clean and abrupt
+disconnects. The `client` module adds integration tests that drive the networking
+layer against a real server over loopback sockets, verifying connect, send, receive,
+multiple concurrent clients, global delivery to every peer, a private message that
+reaches only its recipient (and never a third client), a tagged delivery error for
+an offline recipient, safe local and server-side disconnects, a rejected
+duplicate-username login, and a clean failure when the server is unavailable. Fast,
+headless unit tests for `ConnectionValidator` cover the connection-screen input
+rules (empty/invalid username, invalid server IP, and out-of-range or non-numeric
+port).
 
 ---
 
@@ -220,6 +254,22 @@ pre-release (`1.0-SNAPSHOT`), so current work lives under **Unreleased**.
 ### [Unreleased]
 
 #### Added
+- **Online users & one-to-one private messaging** (`client`, `server`, `common`):
+  the sidebar now shows a live **ONLINE** list — one row per other connected user,
+  with a presence dot and a running count — driven by the server's
+  `USER_JOINED`/`USER_LEFT`/`USER_LIST` events; you never appear as your own
+  recipient. Clicking a user opens a **private conversation** alongside the pinned
+  **Global** room, and selecting a row switches the main panel. Each conversation
+  keeps its **own in-memory history**, so global and private threads never mix. A
+  private message is sent as a `PRIVATE_MESSAGE` and forwarded by the server to
+  **only** that recipient (the sender echoes its own copy locally); a message that
+  lands in a conversation you are not viewing raises an **unread badge**, and the
+  active conversation is highlighted. Edge cases are handled end to end: the server
+  drops blank private messages, truncates over-long ones, refuses a message to
+  yourself or to an offline/unknown user, and reports the failure back **tagged with
+  the intended recipient** (via `Message.deliveryError`) so the client shows a quiet
+  "couldn't deliver" notice in the right conversation; when a peer goes offline their
+  row is removed and the view falls back to Global while their history is retained.
 - **Multi-client TCP chat server** (`server`): `ChatServer` accepts many clients
   and services each on its own pooled thread; `ClientManager` maintains a
   thread-safe registry of unique usernames; the server stops gracefully via a JVM
@@ -277,6 +327,16 @@ pre-release (`1.0-SNAPSHOT`), so current work lives under **Unreleased**.
   `ConnectionValidator` unit tests for the connection-screen input rules.
 
 #### Changed
+- **`MainView` now hosts multiple conversations** (the Global room plus a
+  direct-message conversation per online peer) instead of a single global room, and
+  takes a private-send callback alongside the global one; `ClientController` now also
+  routes inbound `PRIVATE_MESSAGE`s and recipient-tagged delivery errors into it.
+- **The `Sidebar` is now dynamic** rather than a fixed list built once: it adds and
+  removes online-peer rows in place (reusing rows so selection and unread state
+  survive a roster change), keeps a live online count, and highlights the active
+  conversation. `SidebarItem` gained live unread-badge and subtitle (latest-message
+  preview) updates, and `MessageComposer` gained `setPrompt` to name the active
+  conversation.
 - **`MainView` is now network-driven** instead of running on `SampleData` (which
   has been removed): `ClientController` builds a fresh messenger per login and
   routes inbound `GLOBAL_MESSAGE`, `USER_JOINED`, `USER_LEFT` and `USER_LIST`

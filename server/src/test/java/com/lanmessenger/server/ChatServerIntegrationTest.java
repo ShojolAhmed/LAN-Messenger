@@ -147,6 +147,35 @@ class ChatServerIntegrationTest {
     }
 
     @Test
+    @DisplayName("a private message to an unknown user is reported to the sender with the recipient tagged")
+    void privateMessageToUnknownUserIsReported() throws IOException {
+        try (TestClient alice = new TestClient(port)) {
+            alice.loginAndSettle("alice");
+
+            alice.send(Message.privateMessage("alice", "ghost", "anyone there?"));
+
+            Message error = alice.awaitType(MessageType.ERROR);
+            assertEquals("ghost", error.recipient(),
+                    "the delivery error must carry the intended recipient so the client can route it");
+            assertTrue(error.content().toLowerCase().contains("not online"));
+        }
+    }
+
+    @Test
+    @DisplayName("a private message addressed to yourself is rejected")
+    void privateMessageToSelfIsRejected() throws IOException {
+        try (TestClient alice = new TestClient(port)) {
+            alice.loginAndSettle("alice");
+
+            alice.send(Message.privateMessage("alice", "alice", "note to self"));
+
+            Message error = alice.awaitType(MessageType.ERROR);
+            assertEquals("alice", error.recipient(), "the error should identify the intended recipient");
+            assertTrue(error.content().toLowerCase().contains("yourself"));
+        }
+    }
+
+    @Test
     @DisplayName("a duplicate username is rejected but the name is free again for a retry")
     void duplicateUsernameIsRejected() throws IOException {
         try (TestClient first = new TestClient(port);
