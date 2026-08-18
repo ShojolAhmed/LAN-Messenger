@@ -75,19 +75,26 @@ never drift apart.
 
 ## Screenshots
 
-> _Screenshots to be added._
->
-> Suggested captures:
-> - `docs/screenshots/connect.png` — the connection screen (username, IP, port)
-> - `docs/screenshots/global-chat.png` — the Global room with several users online
-> - `docs/screenshots/private-chat.png` — a one-to-one private conversation
->
-> Once added, embed them like this:
->
-> ```markdown
-> ![Connection screen](docs/screenshots/connect.png)
-> ![Global chat](docs/screenshots/global-chat.png)
-> ```
+These are generated from the live UI by an automated test
+(`client/src/test/.../ui/ScreenshotCaptureTest.java`), so they always match the
+current design.
+
+**Connection screen** — enter a username, the server IP and port, then connect.
+
+![Connection screen](docs/screenshots/connect.png)
+
+**Global chat** — the shared room, the online-users sidebar, message grouping, and
+an unread badge on an incoming private message.
+
+![Global chat](docs/screenshots/global-chat.png)
+
+**Private chat** — a one-to-one direct-message conversation.
+
+![Private chat](docs/screenshots/private-chat.png)
+
+> To regenerate the images, set the `LANMSG_SHOTS=1` environment variable and run
+> `mvn test -Dtest=ScreenshotCaptureTest -Dsurefire.failIfNoSpecifiedTests=false`
+> (writes PNGs to `docs/screenshots/`). The test is skipped by a normal build.
 
 ---
 
@@ -472,5 +479,7 @@ steps:
 - **Password-based authentication** and encrypted (TLS) connections.
 - **Server-side persistence** so history is shared across devices, not just local.
 - **Typing indicators** and richer presence (away/busy).
-- **Packaged installers** (e.g. via `jlink`/`jpackage`) so no Maven is needed to run.
-```
+- **Native installers (MSI/EXE)** via the WiX Toolset — the project already builds
+  self-contained `jpackage` app-images (see
+  [Windows release (packaging)](#windows-release-packaging)); a signed installer
+  would make distribution even smoother.
