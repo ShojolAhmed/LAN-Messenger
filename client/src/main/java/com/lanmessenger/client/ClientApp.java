@@ -1,7 +1,6 @@
 package com.lanmessenger.client;
 
 import com.lanmessenger.client.history.ChatHistory;
-import com.lanmessenger.client.history.ChatHistory;
 import com.lanmessenger.client.ui.ConnectView;
 import com.lanmessenger.client.ui.MainView;
 import com.lanmessenger.client.ui.Theme;
