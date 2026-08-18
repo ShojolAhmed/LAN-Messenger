@@ -110,4 +110,46 @@
         </plugins>
     </build>
 
+    <profiles>
+        <!--
+            Packaging profile used by the Windows release scripts (scripts/build-release.ps1).
+            It stages every runtime dependency (the shared 'common' module, JavaFX
+            including its Windows native jars, and the SQLite JDBC driver) into
+            target/dist/lib. The release script then adds this module's own jar and
+            hands the whole flat directory to jpackage as the application class path.
+
+            Activate with:  mvn -Pdist clean package
+        -->
+        <profile>
+            <id>dist</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-dependency-plugin</artifactId>
+                        <version>${dependency.plugin.version}</version>
+                        <executions>
+                            <execution>
+                                <id>copy-runtime-dependencies</id>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>copy-dependencies</goal>
+                                </goals>
+                                <configuration>
+                                    <!-- Flat directory of jars that jpackage will bundle. -->
+                                    <outputDirectory>${project.build.directory}/dist/lib</outputDirectory>
+                                    <!-- Runtime scope keeps test-only deps (JUnit, the
+                                         test-scoped server module) out of the package. -->
+                                    <includeScope>runtime</includeScope>
+                                    <overWriteReleases>true</overWriteReleases>
+                                    <overWriteSnapshots>true</overWriteSnapshots>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
+
 </project>

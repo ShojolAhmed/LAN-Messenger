@@ -22,6 +22,7 @@ data persistence (SQLite via JDBC), organised as a clean multi-module Maven buil
 - [Installation](#installation)
 - [Running the server](#running-the-server)
 - [Running the client](#running-the-client)
+- [Windows release (packaging)](#windows-release-packaging)
 - [Configuration](#configuration)
 - [Database](#database)
 - [Networking](#networking)
@@ -230,6 +231,50 @@ Click **Connect**. On success the messenger opens into the shared Global room; o
 online users appear in the sidebar, where you can click any of them to start a
 private conversation. Run the client on several machines (or several times on one
 machine, using different usernames) to chat between them.
+
+---
+
+## Windows release (packaging)
+
+For end users who should not need Maven or a JDK installed, the project can be
+packaged into **self-contained Windows applications** using `jpackage`. Each
+distribution is a portable "app-image" folder that bundles its own trimmed Java
+runtime (built with `jlink`); the client image also bundles JavaFX and the SQLite
+JDBC driver. No installer tooling (WiX) is required.
+
+Build the release from the project root (Windows, JDK 17+ with `jpackage`/`jlink`):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\build-release.ps1
+```
+
+This runs `mvn -Pdist clean package` (the `dist` Maven profile stages each module's
+runtime jars), builds a per-app runtime with `jlink`, and produces:
+
+```
+release\client\LAN Messenger\LAN Messenger.exe          # double-click to run the client
+release\server\LAN Messenger Server\LAN Messenger Server.exe   # console server
+release\LAN-Messenger-1.0-win-x64.zip                   # zipped, distributable client
+release\LAN-Messenger-Server-1.0-win-x64.zip            # zipped, distributable server
+release\README.md                                       # end-user deployment guide
+```
+
+Optionally smoke-test the packaged apps (starts the packaged server and performs a
+login handshake, runs the client's JavaFX self-test, and checks SQLite on the
+bundled runtime — all using each app's own runtime, not the system JDK):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\verify-release.ps1
+```
+
+End-user instructions — installing, starting the server, finding the server's LAN
+IP, allowing it through Windows Firewall, and connecting clients — are in
+[`packaging/DEPLOYMENT.md`](packaging/DEPLOYMENT.md) (also copied into
+`release\README.md`). The `release\` directory is generated and is not committed.
+
+> Packaging adds only a small `Launcher` class (a JavaFX-safe entry point for the
+> packaged client) and a `dist` Maven profile. **Application behaviour is
+> unchanged**, and the normal `mvn` build/run/test workflow above is unaffected.
 
 ---
 

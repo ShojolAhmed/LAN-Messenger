@@ -35,6 +35,8 @@
         <compiler.plugin.version>3.13.0</compiler.plugin.version>
         <javafx.plugin.version>0.0.8</javafx.plugin.version>
         <exec.plugin.version>3.5.0</exec.plugin.version>
+        <!-- Used by the 'dist' packaging profile (client/server) to stage jars for jpackage. -->
+        <dependency.plugin.version>3.8.1</dependency.plugin.version>
 
         <!-- SQLite (JDBC) for local chat persistence. Used only by the client. -->
         <sqlite.jdbc.version>3.50.3.0</sqlite.jdbc.version>
