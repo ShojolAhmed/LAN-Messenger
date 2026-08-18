@@ -66,9 +66,9 @@ whole app can be re-skinned from one place. The layout is responsive down to the
 minimum window size, with bubbles that reflow as the window resizes and animations
 kept deliberately subtle.
 
-This phase establishes the visual system only: the UI runs on in-memory sample
-data (`SampleData`) via lightweight view-models (`ChatUser`, `ChatMessage`,
-`Conversation`).
+Lightweight, JavaFX-free view-models (`ChatUser`, `ChatMessage`, `Conversation`)
+bridge the wire protocol and these components, so the transcript is fed by live
+network traffic (see **Global chat** below) rather than fixtures.
 
 ### Connecting and logging in
 
@@ -88,9 +88,26 @@ shows the reason cleanly and lets the user adjust and retry; and if the socket
 cannot be opened it reports "Unable to connect to server." A connection that later
 drops returns to the connection screen.
 
-Wiring live message exchange (the roster and global/private messages) from the
-transcript to `client.net` is the next phase — the messenger currently still shows
-`SampleData` once connected.
+On a successful login the messenger opens straight into the shared **Global chat**
+(below); one-to-one private messaging remains a later phase.
+
+### Global chat
+
+Once logged in, every user shares a single **global room**. The composer sends each
+message to the server as a `GLOBAL_MESSAGE`; the server validates it (dropping blank
+messages and truncating anything longer than `Protocol.MAX_MESSAGE_LENGTH`), stamps
+it with the authenticated sender so nobody can spoof another user, and broadcasts it
+to every *other* connected client. The sender shows their own message immediately,
+so the room stays in sync without the server echoing messages back.
+
+Each message is drawn as a bubble: your own are right-aligned in the accent colour,
+everyone else's are left-aligned with the author's name, and both carry a timestamp.
+The transcript auto-scrolls to the newest message. The composer sends on **Enter**,
+keeps **Shift+Enter** for a new line, disables **Send** while empty, and caps the
+message length. Join and leave notices appear as quiet system lines and the header
+shows a live online count, all driven by the server's
+`USER_JOINED`/`USER_LEFT`/`USER_LIST` events. A dropped connection returns to the
+connection screen.
 
 ### Message protocol
 
@@ -229,9 +246,9 @@ pre-release (`1.0-SNAPSHOT`), so current work lives under **Unreleased**.
   (`ChatUser`, `ChatMessage`, `Conversation`) round it out. Every colour, radius and
   interactive state (hover, focus, pressed, disabled, selected, empty) is defined
   once in a centralised design-token stylesheet (`theme.css`); the layout is
-  responsive with reflowing bubbles and subtle animations. The transcript runs on
-  in-memory `SampleData`; the connection/login flow below is now wired to
-  `client.net`, with live message exchange to follow.
+  responsive with reflowing bubbles and subtle animations. (The transcript was
+  initially driven by in-memory `SampleData`; it is now fed by live global chat —
+  see below.)
 - **Client connection & login flow** (`client`): the app now opens on a polished
   connection screen (`ConnectView`) collecting username, server IP and port. Input
   is validated up front by the JavaFX-free `ConnectionValidator` with clear, field
@@ -242,14 +259,38 @@ pre-release (`1.0-SNAPSHOT`), so current work lives under **Unreleased**.
   **Connected** status; `LOGIN_FAILED` (e.g. a username already in use) and an
   unreachable server ("Unable to connect to server.") are reported cleanly for a
   retry, and a dropped connection returns to the connection screen.
-- **Automated tests** (JUnit 5): protocol unit tests plus real-socket integration
-  tests for multi-client connect, message routing, and disconnect resilience;
-  client-side integration tests exercise the networking layer against a live
-  server (connect, send/receive, multiple clients, disconnect handling, and a
-  rejected duplicate-username login), plus headless `ConnectionValidator` unit
-  tests for the connection-screen input rules.
+- **Live global chat** (`client`): the messenger is now wired to `client.net`, so
+  connected users chat in a shared room in real time. A sent message goes to the
+  server and is echoed into the transcript locally; incoming `GLOBAL_MESSAGE`s
+  render as bubbles that tell your own (right-aligned, accent) from others'
+  (left-aligned, with the author's name), each with a timestamp, and the list
+  auto-scrolls to the newest. The composer sends on **Enter**, keeps
+  **Shift+Enter** for a new line, disables **Send** while empty, and caps the
+  length. A live online count and join/leave notices are driven by the server's
+  `USER_LIST`, `USER_JOINED` and `USER_LEFT` events.
+- **Automated tests** (JUnit 5): protocol unit tests (including multi-line
+  round-trips) plus real-socket integration tests for multi-client connect, message
+  routing, and disconnect resilience; client-side integration tests exercise the
+  networking layer against a live server (connect, send/receive, multiple clients,
+  global delivery to every peer, dropped-empty and truncated over-long messages,
+  disconnect handling, and a rejected duplicate-username login), plus headless
+  `ConnectionValidator` unit tests for the connection-screen input rules.
 
 #### Changed
+- **`MainView` is now network-driven** instead of running on `SampleData` (which
+  has been removed): `ClientController` builds a fresh messenger per login and
+  routes inbound `GLOBAL_MESSAGE`, `USER_JOINED`, `USER_LEFT` and `USER_LIST`
+  events into it.
+- **`MessageComposer` is now a multi-line `TextArea`**: Enter sends, Shift+Enter
+  inserts a newline, and typing is capped at `Protocol.MAX_MESSAGE_LENGTH`. Its
+  styling was updated in `theme.css` to blend into the composer pill.
+- **The wire protocol preserves newlines** in message content (encoded as a
+  separator that `BufferedReader.readLine()` ignores) instead of flattening them to
+  spaces, so multi-line messages survive end to end while each message still
+  occupies exactly one physical line.
+- **The server validates global messages**: blank messages are dropped and
+  over-long ones are truncated to the shared `Protocol.MAX_MESSAGE_LENGTH`, so a
+  malformed or abusive message can never crash the server or flood the room.
 - Replaced the placeholder `ServerApp` with `ServerApplication`, adding the
   shutdown hook and compact single-line logging.
 - Replaced the client's placeholder launch card with the full messenger layout

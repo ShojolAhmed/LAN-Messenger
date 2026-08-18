@@ -21,6 +21,16 @@ public final class Protocol {
     /** Default TCP port the server listens on and clients connect to. */
     public static final int DEFAULT_PORT = 5000;
 
+    /**
+     * Maximum number of characters allowed in a single chat message's content.
+     *
+     * <p>Shared so client and server agree: the client prevents typing beyond this
+     * length, and the server truncates anything longer before relaying it. This
+     * bounds the memory and bandwidth a single message can consume, so one client
+     * can never flood the room (or other clients' UIs) with an unbounded message.
+     */
+    public static final int MAX_MESSAGE_LENGTH = 2000;
+
     private Protocol() {
         // Utility class: not meant to be instantiated.
     }

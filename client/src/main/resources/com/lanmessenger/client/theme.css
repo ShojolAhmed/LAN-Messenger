@@ -585,16 +585,28 @@
     -fx-border-color: -color-primary;
     -fx-effect: dropshadow(gaussian, rgba(99, 102, 241, 0.25), 14, 0.0, 0, 0);
 }
+/* The composer input is a multi-line TextArea (Enter sends, Shift+Enter adds a
+   new line). Strip the TextArea's own chrome so it blends into the pill. */
 .composer-input {
     -fx-background-color: transparent;
+    -fx-background-insets: 0;
     -fx-text-fill: -color-text-primary;
     -fx-prompt-text-fill: -color-text-muted;
     -fx-font-size: 14px;
-    -fx-padding: 7 6 7 6;
     -fx-highlight-fill: rgba(99, 102, 241, 0.45);
     -fx-highlight-text-fill: -color-text-primary;
 }
-.composer-input:focused {
+.composer-input .content {
+    -fx-background-color: transparent;
+    -fx-padding: 7 6 7 6;
+    -fx-cursor: text;
+}
+.composer-input:focused,
+.composer-input:focused .content {
+    -fx-background-color: transparent;
+}
+.composer-input .scroll-pane,
+.composer-input .scroll-pane .viewport {
     -fx-background-color: transparent;
 }
 

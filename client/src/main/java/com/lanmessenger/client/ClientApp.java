@@ -13,6 +13,9 @@ import javafx.scene.Scene;
 import javafx.stage.Stage;
 import javafx.util.Duration;
 
+import java.time.LocalDateTime;
+import java.util.List;
+
 /**
  * JavaFX entry point for the LAN Messenger client.
  *
@@ -52,7 +55,8 @@ public class ClientApp extends Application {
 
     private void startSmokeTest(Stage stage) {
         ConnectView connectView = new ConnectView();
-        MainView mainView = new MainView();
+        MainView mainView = new MainView("You", text -> { });
+        seedSmokeTestChat(mainView);
 
         Scene scene = new Scene(connectView, 1080, 720);
         Theme.apply(scene);
@@ -64,6 +68,21 @@ public class ClientApp extends Application {
         stage.show();
 
         runLayoutSmokeTest(stage, scene, connectView, mainView);
+    }
+
+    /**
+     * Populates the messenger with a few messages through its real inbound API so
+     * the layout check exercises incoming, outgoing and system bubbles (and the
+     * live online count) exactly as a running session would.
+     */
+    private void seedSmokeTestChat(MainView mainView) {
+        LocalDateTime now = LocalDateTime.now();
+        mainView.setOnlineUsers(List.of("You", "Rahim", "Karim", "Sakib"));
+        mainView.receiveGlobalMessage("Rahim", "Morning everyone! Server's up on the LAN.", now);
+        mainView.receiveGlobalMessage("Karim", "Nice, connecting now.", now);
+        mainView.receiveGlobalMessage("You", "Awesome \u2014 glad it's stable.", now);
+        mainView.noteUserJoined("Nadia");
+        mainView.receiveGlobalMessage("Nadia", "Hi all, just joined the channel.", now);
     }
 
     /**

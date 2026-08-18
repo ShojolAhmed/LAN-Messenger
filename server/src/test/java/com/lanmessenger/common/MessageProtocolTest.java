@@ -37,10 +37,15 @@ class MessageProtocolTest {
     }
 
     @Test
-    @DisplayName("embedded line breaks are stripped so a message stays on one line")
-    void lineBreaksAreStripped() {
-        String encoded = Message.global("alice", "line1\nline2\r\nline3").encode();
-        assertEquals(1, encoded.lines().count());
+    @DisplayName("newlines survive a round-trip yet never split the wire line")
+    void newlinesPreservedOnASingleLine() {
+        Message original = Message.global("alice", "line1\nline2\r\nline3");
+        String encoded = original.encode();
+        assertEquals(1, encoded.lines().count(),
+                "an encoded message must stay on exactly one physical line");
+        Message decoded = Message.decode(encoded);
+        assertEquals("line1\nline2\nline3", decoded.content(),
+                "newlines are restored on decode (CR/CRLF normalised to LF)");
     }
 
     @Test

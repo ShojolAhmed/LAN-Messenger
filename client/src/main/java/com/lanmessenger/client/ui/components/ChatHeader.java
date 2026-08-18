@@ -58,4 +58,14 @@ public final class ChatHeader extends HBox {
         title.setText(conversation.title());
         subtitle.setText(conversation.headerSubtitle());
     }
+
+    /**
+     * Updates only the subtitle line, leaving the avatar and title untouched. Used
+     * to reflect a live value such as the room's current online count.
+     *
+     * @param text the new subtitle text
+     */
+    public void setSubtitle(String text) {
+        subtitle.setText(text == null ? "" : text);
+    }
 }

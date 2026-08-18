@@ -28,8 +28,12 @@ import java.util.Objects;
  * ({@link String#split(String, int)}), and trivially extensible (add a new
  * {@link MessageType} without breaking existing parsing). Because {@code content}
  * is always the final field it is parsed with a limit of {@code 4}, so the payload
- * itself may safely contain the {@code '|'} delimiter. Only line breaks are
- * forbidden inside a message, so {@link #encode()} strips them defensively.
+ * itself may safely contain the {@code '|'} delimiter. Only a literal line break
+ * would break the single-line framing, so {@link #encode()} represents newlines
+ * inside {@code content} with a separator that {@link java.io.BufferedReader#readLine()}
+ * does not treat as a line terminator; {@link #decode(String)} restores them. This
+ * keeps every message on exactly one physical line while still carrying multi-line
+ * text (for example a message composed with Shift+Enter) end to end.
  */
 public final class Message {
 
@@ -40,6 +44,15 @@ public final class Message {
     public static final String USER_LIST_SEPARATOR = ",";
 
     private static final String DELIMITER_REGEX = "\\|";
+
+    /**
+     * On-the-wire stand-in for a newline inside {@code content}. U+2028 (Unicode
+     * LINE SEPARATOR) is used because {@link java.io.BufferedReader#readLine()}
+     * does <em>not</em> treat it as a line terminator, so an encoded message can
+     * never be split across two reads even when it carries multi-line text. It is
+     * converted back to a real {@code '\n'} on {@link #decode(String)}.
+     */
+    private static final char WIRE_NEWLINE = '\u2028';
 
     private final MessageType type;
     private final String sender;
@@ -122,8 +135,9 @@ public final class Message {
 
     /**
      * Serialises this message to its single-line wire form (without the trailing
-     * newline; the transport adds that). Any embedded line breaks are replaced
-     * with spaces so a message can never span more than one line.
+     * newline; the transport adds that). Any newlines embedded in {@code content}
+     * are represented by {@link #WIRE_NEWLINE} so a message can never span more
+     * than one physical line; {@link #decode(String)} restores them.
      *
      * @return the encoded line
      */
@@ -131,7 +145,7 @@ public final class Message {
         return type.name() + DELIMITER
                 + sender + DELIMITER
                 + recipient + DELIMITER
-                + stripLineBreaks(content);
+                + encodeNewlines(content);
     }
 
     /**
@@ -152,7 +166,7 @@ public final class Message {
         MessageType type = MessageType.fromWire(parts[0]);
         String sender = parts.length > 1 ? parts[1].trim() : "";
         String recipient = parts.length > 2 ? parts[2].trim() : "";
-        String content = parts.length > 3 ? parts[3] : "";
+        String content = parts.length > 3 ? decodeNewlines(parts[3]) : "";
         return new Message(type, sender, recipient, content);
     }
 
@@ -231,7 +245,23 @@ public final class Message {
         return value == null ? "" : value;
     }
 
-    private static String stripLineBreaks(String value) {
-        return value.replace('\r', ' ').replace('\n', ' ');
+    /**
+     * Replaces every newline in {@code value} with {@link #WIRE_NEWLINE} so the
+     * encoded message stays on a single physical line. CR and CRLF are normalised
+     * to LF first, so the wire form is independent of the sender's platform.
+     */
+    private static String encodeNewlines(String value) {
+        if (value.indexOf('\n') < 0 && value.indexOf('\r') < 0) {
+            return value; // common case: nothing to escape
+        }
+        return value
+                .replace("\r\n", "\n")
+                .replace('\r', '\n')
+                .replace('\n', WIRE_NEWLINE);
+    }
+
+    /** Restores real {@code '\n'} characters from their {@link #WIRE_NEWLINE} form. */
+    private static String decodeNewlines(String value) {
+        return value.indexOf(WIRE_NEWLINE) < 0 ? value : value.replace(WIRE_NEWLINE, '\n');
     }
 }

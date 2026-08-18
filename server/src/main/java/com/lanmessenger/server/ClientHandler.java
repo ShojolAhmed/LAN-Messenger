@@ -1,6 +1,7 @@
 package com.lanmessenger.server;
 
 import com.lanmessenger.common.Message;
+import com.lanmessenger.common.Protocol;
 import com.lanmessenger.common.Usernames;
 
 import java.io.BufferedReader;
@@ -160,8 +161,7 @@ public final class ClientHandler implements Runnable {
 
     private void handleAfterLogin(Message message) {
         switch (message.type()) {
-            case GLOBAL_MESSAGE ->
-                    clientManager.broadcast(Message.global(username, message.content()), username);
+            case GLOBAL_MESSAGE -> handleGlobalMessage(message.content());
             case PRIVATE_MESSAGE -> deliverPrivate(message);
             case USER_LIST -> send(Message.userList(clientManager.usernames()));
             case DISCONNECT -> {
@@ -171,6 +171,27 @@ public final class ClientHandler implements Runnable {
             case LOGIN -> send(Message.error("already logged in as '" + username + "'"));
             default -> send(Message.error("unsupported message type: " + message.type()));
         }
+    }
+
+    /**
+     * Validates and broadcasts a global chat message.
+     *
+     * <p>The relayed message is re-stamped with this connection's authenticated
+     * {@link #username} (so a client can never spoof another sender) and sent to
+     * everyone <em>except</em> the sender, who shows their own copy locally. Two
+     * guards keep a misbehaving or malicious client from disrupting the room:
+     * blank content is dropped (nothing meaningful to show), and over-long content
+     * is truncated to {@link Protocol#MAX_MESSAGE_LENGTH}. Neither ever throws, so
+     * one bad message can never crash the handler or the server.
+     */
+    private void handleGlobalMessage(String content) {
+        if (content == null || content.isBlank()) {
+            return; // ignore empty/whitespace-only messages
+        }
+        String capped = content.length() > Protocol.MAX_MESSAGE_LENGTH
+                ? content.substring(0, Protocol.MAX_MESSAGE_LENGTH)
+                : content;
+        clientManager.broadcast(Message.global(username, capped), username);
     }
 
     private void deliverPrivate(Message message) {

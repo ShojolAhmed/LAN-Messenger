@@ -2,6 +2,7 @@ package com.lanmessenger.client.net;
 
 import com.lanmessenger.common.Message;
 import com.lanmessenger.common.MessageType;
+import com.lanmessenger.common.Protocol;
 import com.lanmessenger.server.ChatServer;
 import com.lanmessenger.server.ServerConfiguration;
 import org.junit.jupiter.api.AfterEach;
@@ -150,6 +151,72 @@ class ChatClientIntegrationTest {
                     "Carol must never receive a private message addressed to Bob");
         } while (toCarol.type() != MessageType.GLOBAL_MESSAGE);
         assertEquals("marker", toCarol.content());
+    }
+
+    @Test
+    @DisplayName("a global message is delivered to every other client")
+    void globalMessageReachesAllOtherClients() throws Exception {
+        RecordingListener alice = new RecordingListener();
+        RecordingListener bob = new RecordingListener();
+        RecordingListener carol = new RecordingListener();
+        ChatClient aliceClient = connectAndSettle(alice, "alice");
+        connectAndSettle(bob, "bob");
+        connectAndSettle(carol, "carol");
+
+        aliceClient.sendGlobalMessage("hello everyone!");
+
+        for (RecordingListener peer : List.of(bob, carol)) {
+            Message received = peer.awaitType(MessageType.GLOBAL_MESSAGE);
+            assertEquals("alice", received.sender(), "the server stamps the authenticated sender");
+            assertEquals("hello everyone!", received.content());
+        }
+    }
+
+    @Test
+    @DisplayName("an empty global message is not broadcast to peers")
+    void emptyGlobalMessageIsDropped() throws Exception {
+        RecordingListener alice = new RecordingListener();
+        RecordingListener bob = new RecordingListener();
+        ChatClient aliceClient = connectAndSettle(alice, "alice");
+        connectAndSettle(bob, "bob");
+
+        aliceClient.sendGlobalMessage("   ");    // blank: the server must ignore it
+        aliceClient.sendGlobalMessage("marker"); // this one must arrive
+
+        Message received = bob.awaitType(MessageType.GLOBAL_MESSAGE);
+        assertEquals("marker", received.content(),
+                "the blank message must be dropped, so the first global Bob sees is the marker");
+    }
+
+    @Test
+    @DisplayName("an over-long global message is capped before broadcast")
+    void longGlobalMessageIsCapped() throws Exception {
+        RecordingListener alice = new RecordingListener();
+        RecordingListener bob = new RecordingListener();
+        ChatClient aliceClient = connectAndSettle(alice, "alice");
+        connectAndSettle(bob, "bob");
+
+        String huge = "x".repeat(Protocol.MAX_MESSAGE_LENGTH + 500);
+        aliceClient.send(Message.global("alice", huge)); // bypass the UI's length cap
+
+        Message received = bob.awaitType(MessageType.GLOBAL_MESSAGE);
+        assertEquals(Protocol.MAX_MESSAGE_LENGTH, received.content().length(),
+                "the server should truncate the message to the shared maximum length");
+    }
+
+    @Test
+    @DisplayName("a multi-line global message reaches peers with its newlines intact")
+    void multiLineGlobalMessageIsPreserved() throws Exception {
+        RecordingListener alice = new RecordingListener();
+        RecordingListener bob = new RecordingListener();
+        ChatClient aliceClient = connectAndSettle(alice, "alice");
+        connectAndSettle(bob, "bob");
+
+        aliceClient.sendGlobalMessage("first line\nsecond line");
+
+        Message received = bob.awaitType(MessageType.GLOBAL_MESSAGE);
+        assertEquals("first line\nsecond line", received.content(),
+                "newlines typed with Shift+Enter must survive the round-trip through the server");
     }
 
     @Test

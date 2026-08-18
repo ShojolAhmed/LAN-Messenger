@@ -1,9 +1,13 @@
 package com.lanmessenger.client.ui.components;
 
+import com.lanmessenger.common.Protocol;
 import javafx.beans.binding.Bindings;
 import javafx.geometry.Pos;
 import javafx.scene.control.Button;
-import javafx.scene.control.TextField;
+import javafx.scene.control.TextArea;
+import javafx.scene.control.TextFormatter;
+import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
@@ -11,23 +15,29 @@ import javafx.scene.layout.VBox;
 import java.util.function.Consumer;
 
 /**
- * The bottom compose bar: a rounded input pill and a primary send button.
+ * The bottom compose bar: a rounded, growing input area and a primary send button.
  *
  * <p>Interaction:
  * <ul>
  *   <li>the send button is <b>disabled</b> while the input is empty or whitespace;</li>
- *   <li>pressing <b>Enter</b> or clicking <b>Send</b> submits (when non-blank);</li>
+ *   <li>pressing <b>Enter</b> (or clicking <b>Send</b>) submits when non-blank;</li>
+ *   <li>pressing <b>Shift+Enter</b> inserts a newline for multi-line messages;</li>
+ *   <li>the input grows with its content up to {@link #MAX_ROWS} rows, then scrolls;</li>
+ *   <li>typing is capped at {@link Protocol#MAX_MESSAGE_LENGTH} characters so an
+ *       extremely long message can never be composed (the server caps too);</li>
  *   <li>after sending, the input clears and keeps focus for a fluid back-and-forth.</li>
  * </ul>
  *
- * <p>The submitted text is handed to the callback set via
- * {@link #setOnSend(Consumer)}. In this UI phase {@link com.lanmessenger.client.ui.MainView}
- * simply appends it to the open conversation's sample messages — no networking is
- * involved.
+ * <p>The submitted text (trimmed, non-blank) is handed to the callback set via
+ * {@link #setOnSend(Consumer)}. {@link com.lanmessenger.client.ui.MainView} sends
+ * it to the server as a global message and echoes it into the transcript.
  */
 public final class MessageComposer extends VBox {
 
-    private final TextField input = new TextField();
+    /** Grow the input up to this many rows before it starts scrolling. */
+    private static final int MAX_ROWS = 5;
+
+    private final TextArea input = new TextArea();
     private final Button send = new Button("Send");
 
     private Consumer<String> onSend = text -> { };
@@ -37,8 +47,22 @@ public final class MessageComposer extends VBox {
 
         input.getStyleClass().addAll("composer-input", "text-input");
         input.setPromptText("Type a message\u2026");
+        input.setWrapText(true);
+        input.setPrefRowCount(1);
+        // Cap the length at the source; the server truncates as a safety net too.
+        input.setTextFormatter(new TextFormatter<>(change ->
+                change.getControlNewText().length() <= Protocol.MAX_MESSAGE_LENGTH ? change : null));
         HBox.setHgrow(input, Priority.ALWAYS);
-        input.setOnAction(event -> fire()); // Enter submits
+
+        // Enter submits; Shift+Enter falls through so the TextArea inserts a newline.
+        input.addEventFilter(KeyEvent.KEY_PRESSED, event -> {
+            if (event.getCode() == KeyCode.ENTER && !event.isShiftDown()) {
+                event.consume();
+                fire();
+            }
+        });
+        // Grow with the content up to MAX_ROWS, then let the input scroll.
+        input.textProperty().addListener((obs, old, text) -> adjustRows(text));
 
         send.getStyleClass().add("send-button");
         // Disable while there is nothing meaningful to send.
@@ -48,7 +72,7 @@ public final class MessageComposer extends VBox {
 
         HBox pill = new HBox(input, send);
         pill.getStyleClass().add("composer");
-        pill.setAlignment(Pos.CENTER);
+        pill.setAlignment(Pos.BOTTOM_CENTER);
 
         getChildren().add(pill);
     }
@@ -61,6 +85,17 @@ public final class MessageComposer extends VBox {
     /** Moves keyboard focus to the input. */
     public void focusInput() {
         input.requestFocus();
+    }
+
+    /** Sizes the input to its line count, clamped between one and {@link #MAX_ROWS}. */
+    private void adjustRows(String text) {
+        int lines = 1;
+        for (int i = 0; i < text.length(); i++) {
+            if (text.charAt(i) == '\n') {
+                lines++;
+            }
+        }
+        input.setPrefRowCount(Math.min(Math.max(lines, 1), MAX_ROWS));
     }
 
     private void fire() {

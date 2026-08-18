@@ -13,6 +13,7 @@ import javafx.scene.Scene;
 import javafx.util.Duration;
 
 import java.util.Objects;
+import java.time.LocalDateTime;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -67,7 +68,7 @@ public final class ClientController implements ChatClientListener {
 
     private final ConnectView connectView = new ConnectView();
 
-    private MainView mainView;      // created on first successful login, then reused
+    private MainView mainView;      // created fresh on each successful login
     private Scene scene;            // set via attachScene, used to swap the root
     private ChatClient client;      // recreated per connection attempt
 
@@ -174,8 +175,24 @@ public final class ClientController implements ChatClientListener {
                 case LOGIN_FAILED -> failLogin(message.content());
                 default -> { /* ignore anything before the verdict (e.g. USER_LIST) */ }
             }
+            return;
         }
-        // In IN_APP, live message handling is a later phase; ignore for now.
+        // Once inside the messenger, drive the global chat from live server events.
+        if (phase == Phase.IN_APP && mainView != null) {
+            routeToMessenger(message);
+        }
+    }
+
+    /** Feeds an inbound message into the messenger while logged in. */
+    private void routeToMessenger(Message message) {
+        switch (message.type()) {
+            case GLOBAL_MESSAGE ->
+                    mainView.receiveGlobalMessage(message.sender(), message.content(), LocalDateTime.now());
+            case USER_JOINED -> mainView.noteUserJoined(message.sender());
+            case USER_LEFT -> mainView.noteUserLeft(message.sender());
+            case USER_LIST -> mainView.setOnlineUsers(message.userListEntries());
+            default -> { /* ERROR and other types are not surfaced in the global chat */ }
+        }
     }
 
     @Override
@@ -209,9 +226,9 @@ public final class ClientController implements ChatClientListener {
         cancelLoginTimeout();
         phase = Phase.IN_APP;
 
-        if (mainView == null) {
-            mainView = new MainView();
-        }
+        // A fresh messenger per login: it binds to the current connection's send
+        // method and starts with a clean transcript for this session.
+        mainView = new MainView(pendingUsername, client::sendGlobalMessage);
         mainView.showConnected();
 
         if (scene != null) {
