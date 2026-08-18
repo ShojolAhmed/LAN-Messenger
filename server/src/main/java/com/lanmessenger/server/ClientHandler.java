@@ -7,8 +7,10 @@ import com.lanmessenger.common.Usernames;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.net.Socket;
+import java.net.SocketException;
 import java.nio.charset.StandardCharsets;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -55,8 +57,26 @@ public final class ClientHandler implements Runnable {
         this.socket = socket;
         this.clientManager = clientManager;
         this.remoteAddress = String.valueOf(socket.getRemoteSocketAddress());
+        tuneSocket(socket);
         this.in = new BufferedReader(new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8));
-        this.out = new PrintWriter(new java.io.OutputStreamWriter(socket.getOutputStream(), StandardCharsets.UTF_8), true);
+        this.out = new PrintWriter(new OutputStreamWriter(socket.getOutputStream(), StandardCharsets.UTF_8), true);
+    }
+
+    /**
+     * Applies connection-health socket options. {@code TCP_NODELAY} sends the
+     * small, line-sized chat messages promptly instead of coalescing them (Nagle),
+     * and {@code SO_KEEPALIVE} lets the OS eventually detect a peer that vanished
+     * without a clean close, so a zombie connection does not linger forever. A
+     * failure to tune is non-fatal &mdash; the connection still works.
+     */
+    private static void tuneSocket(Socket socket) {
+        try {
+            socket.setTcpNoDelay(true);
+            socket.setKeepAlive(true);
+        } catch (SocketException ex) {
+            LOG.log(Level.FINE, ex, () -> "Could not tune client socket options for "
+                    + socket.getRemoteSocketAddress());
+        }
     }
 
     @Override
@@ -70,6 +90,12 @@ public final class ClientHandler implements Runnable {
         } catch (IOException ex) {
             // Expected when a client drops or the socket is closed during shutdown.
             LOG.log(Level.FINE, ex, () -> "Connection ended for " + describe());
+        } catch (RuntimeException ex) {
+            // A genuinely unexpected bug while handling this client must not escape
+            // and terminate the pool worker with a bare stack trace. Log it and fall
+            // through to the shared cleanup; other clients and the server are
+            // unaffected.
+            LOG.log(Level.WARNING, ex, () -> "Unexpected error handling " + describe());
         } finally {
             cleanup();
         }

@@ -49,6 +49,7 @@ public final class MessageComposer extends VBox {
 
         input.getStyleClass().addAll("composer-input", "text-input");
         input.setPromptText("Type a message\u2026");
+        input.setAccessibleText("Message input");
         input.setWrapText(true);
         input.setPrefRowCount(1);
         // Cap the length at the source; the server truncates as a safety net too.

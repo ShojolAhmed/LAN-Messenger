@@ -7,8 +7,11 @@ import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.net.SocketException;
 import java.nio.charset.StandardCharsets;
 import java.util.Objects;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Owns a single client-side TCP connection to the chat server and its UTF-8
@@ -26,6 +29,8 @@ import java.util.Objects;
  * never a half-initialised one.
  */
 public final class ServerConnection implements AutoCloseable {
+
+    private static final Logger LOG = Logger.getLogger(ServerConnection.class.getName());
 
     private final Socket socket;
     private final BufferedReader reader;
@@ -67,10 +72,26 @@ public final class ServerConnection implements AutoCloseable {
         Socket socket = new Socket();
         try {
             socket.connect(new InetSocketAddress(host, port), connectTimeoutMillis);
+            tune(socket);
             return new ServerConnection(socket);
         } catch (IOException | RuntimeException ex) {
             closeQuietly(socket);
             throw ex;
+        }
+    }
+
+    /**
+     * Applies connection-health socket options: {@code TCP_NODELAY} so small chat
+     * lines are sent promptly (no Nagle coalescing) and {@code SO_KEEPALIVE} so the
+     * OS can eventually detect a server that vanished without a clean close. Tuning
+     * is best-effort; a failure here does not prevent using the connection.
+     */
+    private static void tune(Socket socket) {
+        try {
+            socket.setTcpNoDelay(true);
+            socket.setKeepAlive(true);
+        } catch (SocketException ex) {
+            LOG.log(Level.FINE, ex, () -> "Could not tune socket options");
         }
     }
 

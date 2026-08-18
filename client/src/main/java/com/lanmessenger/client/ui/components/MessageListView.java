@@ -11,6 +11,7 @@ import javafx.beans.binding.Bindings;
 import javafx.beans.property.DoubleProperty;
 import javafx.beans.property.SimpleDoubleProperty;
 import javafx.collections.ListChangeListener;
+import javafx.geometry.Bounds;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.control.Label;
@@ -112,16 +113,32 @@ public final class MessageListView extends StackPane {
     // ---- List maintenance ------------------------------------------------
 
     private void onMessagesChanged(ListChangeListener.Change<? extends ChatMessage> change) {
+        // Decide once, from the pre-change scroll position, whether to keep the view
+        // pinned to the newest message. This avoids yanking the user to the bottom
+        // when they have deliberately scrolled up to read earlier history.
+        boolean stick = isPinnedToBottom();
+        boolean sentByUs = false;
         while (change.next()) {
             if (change.wasAdded() && !change.wasRemoved()) {
                 for (int i = change.getFrom(); i < change.getTo(); i++) {
                     appendRow(i, true);
+                    if (current.messages().get(i).isOutgoing()) {
+                        sentByUs = true;
+                    }
                 }
             } else {
+                // A wholesale change (e.g. a history merge or reset): rebuild and
+                // show the latest, as if the conversation had just been opened.
                 rebuild();
+                stick = true;
             }
         }
         updateEmptyState();
+        // Follow our own just-sent message unconditionally; otherwise only when the
+        // view was already at the bottom. Coalesced to one scroll per change batch.
+        if (stick || sentByUs) {
+            scrollToBottomLater();
+        }
     }
 
     private void rebuild() {
@@ -157,7 +174,8 @@ public final class MessageListView extends StackPane {
         if (animate) {
             playAppear(row);
         }
-        scrollToBottomLater();
+        // Scrolling is coalesced by the callers (onMessagesChanged / setConversation)
+        // so a batch of rows triggers a single scroll rather than one per row.
     }
 
     private static boolean isGrouped(ChatMessage previous, ChatMessage current) {
@@ -183,6 +201,21 @@ public final class MessageListView extends StackPane {
     private void scrollToBottomLater() {
         // Defer until after layout so the new content height is known.
         Platform.runLater(() -> scroll.setVvalue(1.0));
+    }
+
+    /**
+     * @return whether the transcript is currently at (or within a hair of) the
+     *         bottom. When the content is shorter than the viewport there is nothing
+     *         to scroll, which also counts as being at the bottom. Read <em>before</em>
+     *         a change is applied to decide whether to stay pinned to the newest
+     *         message afterwards.
+     */
+    private boolean isPinnedToBottom() {
+        Bounds viewport = scroll.getViewportBounds();
+        if (viewport == null || messagesBox.getHeight() <= viewport.getHeight() + 1) {
+            return true;
+        }
+        return scroll.getVvalue() >= 0.985;
     }
 
     // ---- Node builders ---------------------------------------------------

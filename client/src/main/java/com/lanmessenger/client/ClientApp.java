@@ -1,6 +1,7 @@
 package com.lanmessenger.client;
 
 import com.lanmessenger.client.history.ChatHistory;
+import com.lanmessenger.client.history.ChatHistory;
 import com.lanmessenger.client.ui.ConnectView;
 import com.lanmessenger.client.ui.MainView;
 import com.lanmessenger.client.ui.Theme;
@@ -16,6 +17,8 @@ import javafx.util.Duration;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * JavaFX entry point for the LAN Messenger client.
@@ -29,8 +32,17 @@ import java.util.List;
  */
 public class ClientApp extends Application {
 
+    private static final Logger LOG = Logger.getLogger(ClientApp.class.getName());
+
+    /** Held so the app can be torn down cleanly in {@link #stop()}. */
+    private ClientController controller;
+
     @Override
     public void start(Stage stage) {
+        // Log any exception that escapes a thread instead of letting it vanish to
+        // stderr; this covers the JavaFX Application Thread and background threads.
+        installUncaughtExceptionLogging();
+
         // When LANMSG_SMOKE=1, exercise both screens (connect + messenger) at a
         // range of window sizes, then close — a cheap layout regression guard that
         // neither blocks on the GUI nor requires a running server.
@@ -39,7 +51,7 @@ public class ClientApp extends Application {
             return;
         }
 
-        ClientController controller = new ClientController();
+        controller = new ClientController();
         Scene scene = new Scene(controller.root(), 1080, 720);
         Theme.apply(scene);
         controller.attachScene(scene);
@@ -52,6 +64,25 @@ public class ClientApp extends Application {
 
         controller.start();
         System.out.println(Protocol.APP_NAME + " client UI started");
+    }
+
+    /**
+     * Called by JavaFX when the last window closes / the app exits. Tears the
+     * client down cleanly: disconnects from the server and closes the chat-history
+     * store, rather than relying on daemon threads dying with the JVM.
+     */
+    @Override
+    public void stop() {
+        if (controller != null) {
+            controller.shutdown();
+        }
+    }
+
+    private void installUncaughtExceptionLogging() {
+        Thread.UncaughtExceptionHandler handler = (thread, error) ->
+                LOG.log(Level.SEVERE, error, () -> "Uncaught exception on thread '" + thread.getName() + "'");
+        Thread.currentThread().setUncaughtExceptionHandler(handler); // JavaFX Application Thread
+        Thread.setDefaultUncaughtExceptionHandler(handler);          // any other thread
     }
 
     private void startSmokeTest(Stage stage) {

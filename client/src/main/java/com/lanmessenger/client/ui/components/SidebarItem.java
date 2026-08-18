@@ -3,6 +3,7 @@ package com.lanmessenger.client.ui.components;
 import com.lanmessenger.client.ui.model.Conversation;
 import javafx.css.PseudoClass;
 import javafx.geometry.Pos;
+import javafx.scene.AccessibleRole;
 import javafx.scene.control.Label;
 import javafx.scene.input.KeyCode;
 import javafx.scene.layout.HBox;
@@ -47,6 +48,8 @@ public final class SidebarItem extends HBox {
         setAlignment(Pos.CENTER_LEFT);
         setMaxWidth(Double.MAX_VALUE);
         setFocusTraversable(true);
+        // It behaves like a button (click/Enter/Space activate it); tell AT so.
+        setAccessibleRole(AccessibleRole.BUTTON);
 
         // Accent bar is an overlay so it never shifts the content on selection.
         selectionBar.getStyleClass().add("selection-bar");
@@ -110,6 +113,15 @@ public final class SidebarItem extends HBox {
         badge.setText(show ? Integer.toString(unread) : "");
         badge.setVisible(show);
         badge.setManaged(show);
+        updateAccessibleText();
+    }
+
+    /** Describes the row for assistive technology: title plus any unread count. */
+    private void updateAccessibleText() {
+        int unread = conversation.unread();
+        setAccessibleText(unread > 0
+                ? conversation.title() + ", " + unread + " unread"
+                : conversation.title());
     }
 
     @Override

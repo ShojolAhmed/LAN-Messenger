@@ -382,6 +382,23 @@ pre-release (`1.0-SNAPSHOT`), so current work lives under **Unreleased**.
   `ConnectionValidator` unit tests for the connection-screen input rules.
 
 #### Changed
+- **Reliability & UI polish pass** (`client`, `server`): a round of hardening and
+  refinement with no new features. **Reliability:** client sockets on both ends now
+  enable `TCP_NODELAY` (prompt small-message delivery) and `SO_KEEPALIVE` (so a peer
+  that vanishes without a clean close is eventually detected); the server's
+  per-client handler now also catches unexpected `RuntimeException`s, logging them
+  and cleaning up so one client can never destabilise the server or dump a raw stack
+  trace; the client now shuts down cleanly when its window closes
+  (`ClientApp.stop()` → `ClientController.shutdown()` disconnects the socket and
+  closes the SQLite store), and installs an uncaught-exception logger so nothing
+  fails silently. **UI/performance:** the transcript now stays pinned to the newest
+  message only when you are already at the bottom — scrolling up to read history is
+  no longer interrupted by incoming messages, while your own sent messages still
+  scroll into view — and redundant per-row scroll requests are coalesced into one
+  per update (notably when a conversation's history loads). **Accessibility:** the
+  connection status pill, sidebar rows, message input and connect-screen fields now
+  expose accessible text/roles for screen readers, and sidebar rows announce their
+  unread count.
 - **`MainView` now hosts multiple conversations** (the Global room plus a
   direct-message conversation per online peer) instead of a single global room, and
   takes a private-send callback alongside the global one; `ClientController` now also

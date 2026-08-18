@@ -105,6 +105,7 @@ public final class ConnectView extends StackPane {
 
         field.getStyleClass().addAll("field-input", "text-input");
         field.setPromptText(prompt);
+        field.setAccessibleText(labelText); // associate the visible label for screen readers
         field.setOnAction(event -> fire()); // Enter submits from any field
 
         VBox group = new VBox(label, field);

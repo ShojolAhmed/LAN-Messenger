@@ -99,6 +99,28 @@ public final class ClientController implements ChatClientListener {
         connectView.focusUsername();
     }
 
+    /**
+     * Cleanly tears everything down when the application is closing: cancels any
+     * pending login watchdog, disconnects the client (sending a best-effort
+     * {@code DISCONNECT} so the server drops us promptly), and disposes the
+     * messenger so its chat-history store closes. Safe to call when idle. Runs on
+     * the JavaFX Application Thread from {@link com.lanmessenger.client.ClientApp#stop()}.
+     */
+    public void shutdown() {
+        cancelLoginTimeout();
+        // We are exiting; there is no UI transition to perform for this disconnect.
+        suppressNextDisconnect = true;
+        if (client != null) {
+            client.disconnect();
+            client = null;
+        }
+        if (mainView != null) {
+            mainView.dispose();
+            mainView = null;
+        }
+        phase = Phase.CONNECT;
+    }
+
     // ---------------------------------------------------------------------
     // Connect flow
     // ---------------------------------------------------------------------

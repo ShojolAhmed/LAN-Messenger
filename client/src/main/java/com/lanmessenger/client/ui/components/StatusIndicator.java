@@ -61,5 +61,8 @@ public final class StatusIndicator extends HBox {
                 State.DISCONNECTED.styleClass);
         getStyleClass().add(state.styleClass);
         label.setText(text);
+        // Announce the connection state to assistive technology (the coloured dot
+        // alone is not perceivable to screen-reader users).
+        setAccessibleText("Connection status: " + text);
     }
 }
