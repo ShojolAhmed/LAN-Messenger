@@ -1,5 +1,6 @@
 package com.lanmessenger.client;
 
+import com.lanmessenger.client.history.ChatHistory;
 import com.lanmessenger.client.ui.ConnectView;
 import com.lanmessenger.client.ui.MainView;
 import com.lanmessenger.client.ui.Theme;
@@ -55,7 +56,9 @@ public class ClientApp extends Application {
 
     private void startSmokeTest(Stage stage) {
         ConnectView connectView = new ConnectView();
-        MainView mainView = new MainView("You", text -> { }, (recipient, text) -> { });
+        // The smoke test runs without persistence so it neither touches the real
+        // database nor requires a data directory.
+        MainView mainView = new MainView("You", text -> { }, (recipient, text) -> { }, ChatHistory.disabled());
         seedSmokeTestChat(mainView);
 
         Scene scene = new Scene(connectView, 1080, 720);

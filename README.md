@@ -139,6 +139,39 @@ its history are kept in case they return. Private content is validated just like
 global chat (blank messages dropped, over-long ones truncated), and duplicate
 usernames are already prevented at login, so the online list stays unique.
 
+### Local chat history (SQLite persistence)
+
+Conversations are persisted locally so they survive restarts. Each delivered
+message — global or private, incoming or outgoing — is written to an **SQLite**
+database via **JDBC**; when a conversation is opened its stored messages are loaded
+back and shown in the chat panel. System notices (joins, leaves, "beginning of
+conversation", delivery failures) are treated as ephemeral and are never stored.
+
+The persistence code is kept strictly separate from the UI, networking and server
+logic in two small layers under the client:
+
+| Package             | Responsibility                                                                                             |
+|---------------------|------------------------------------------------------------------------------------------------------------|
+| `client.data`       | Pure JDBC: `Database` (connection + schema), `MessageDao`/`UserDao`, the `StoredMessage` row model, and `AppDirectories`. No JavaFX, no networking. |
+| `client.history`    | Bridges the data layer to the UI: `ChatHistoryStore` maps rows to/from the UI's `ChatMessage`; `ChatHistory` (with `PersistentChatHistory`) runs every query on a single background thread and delivers results back on the JavaFX thread. |
+
+Two tables back it. `messages` holds `id`, `owner` (the logged-in account, so
+several users on one machine keep separate private histories), `sender`,
+`recipient` (empty for global), `content`, `type` (`GLOBAL_MESSAGE` or
+`PRIVATE_MESSAGE`) and a `timestamp`; a one-to-one thread is simply every private
+message exchanged in either direction between the owner and a peer. `users` is a
+small registry of every username seen, with first/last-seen times.
+
+**The UI thread is never blocked**: `MainView` loads a conversation's history in
+the background and merges it in when it arrives, and records new messages
+fire-and-forget. **Storage failures are non-fatal**: if the database cannot be
+opened the client logs it once and runs with persistence disabled (an empty
+history) rather than crashing. The database lives in the per-user application data
+directory (e.g. `%LOCALAPPDATA%\LanMessenger` on Windows,
+`~/.local/share/lan-messenger` on Linux, `~/Library/Application Support/LanMessenger`
+on macOS), so it is never committed; set `-Dlanmessenger.data.dir=<dir>` to override
+the location.
+
 ### Message protocol
 
 Every message is a single UTF-8 line with four pipe-separated fields:
@@ -161,6 +194,7 @@ protocol easy to extend.
 - JavaFX 21
 - Maven (multi-module)
 - TCP sockets + multithreading (Java standard library)
+- SQLite via JDBC (`org.xerial:sqlite-jdbc`) for local chat history
 - JUnit 5 (tests)
 - Git
 
@@ -241,7 +275,10 @@ an offline recipient, safe local and server-side disconnects, a rejected
 duplicate-username login, and a clean failure when the server is unavailable. Fast,
 headless unit tests for `ConnectionValidator` cover the connection-screen input
 rules (empty/invalid username, invalid server IP, and out-of-range or non-numeric
-port).
+port). A headless persistence suite covers the SQLite data layer (storing and
+reading global and per-peer private messages, the users registry, and generated
+ids), history surviving a store reopen (a "restart"), per-owner scoping, and the
+graceful no-op fallback when the database cannot be opened.
 
 ---
 
@@ -254,6 +291,24 @@ pre-release (`1.0-SNAPSHOT`), so current work lives under **Unreleased**.
 ### [Unreleased]
 
 #### Added
+- **Local chat history via SQLite/JDBC** (`client`): conversations now persist
+  across restarts. A clean, self-contained persistence layer lives under the client
+  in two packages kept separate from the UI, networking and server: `client.data`
+  (pure JDBC — `Database` for the connection and schema, `MessageDao`/`UserDao`, the
+  `StoredMessage` row model and `AppDirectories`) and `client.history` (the
+  `ChatHistoryStore` mapping to/from the UI's `ChatMessage`, exposed to the UI as
+  `ChatHistory`/`PersistentChatHistory`). Every delivered global and private message
+  is recorded, and opening a conversation loads its stored messages back into the
+  chat panel; system notices are not persisted. All database work runs on a single
+  background thread and results are marshalled back to the JavaFX thread, so the UI
+  never blocks. If the database cannot be opened the client degrades gracefully to an
+  empty, in-memory-only history instead of crashing. The `messages` table stores
+  `id`, `owner`, `sender`, `recipient`, `content`, `type` and `timestamp`; a `users`
+  table records every username seen. The database is created in the per-user
+  application data directory (overridable with `-Dlanmessenger.data.dir`) and is
+  git-ignored. Added headless tests for the data layer, for history surviving a
+  reopen (restart), owner scoping, and for graceful behaviour when the database
+  cannot be opened.
 - **Online users & one-to-one private messaging** (`client`, `server`, `common`):
   the sidebar now shows a live **ONLINE** list — one row per other connected user,
   with a presence dot and a running count — driven by the server's

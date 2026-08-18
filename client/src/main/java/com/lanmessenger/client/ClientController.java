@@ -3,6 +3,7 @@ package com.lanmessenger.client;
 import com.lanmessenger.client.net.ChatClient;
 import com.lanmessenger.client.net.ChatClientListener;
 import com.lanmessenger.client.net.ConnectionValidator;
+import com.lanmessenger.client.history.ChatHistory;
 import com.lanmessenger.client.ui.ConnectView;
 import com.lanmessenger.client.ui.MainView;
 import com.lanmessenger.common.Message;
@@ -236,9 +237,17 @@ public final class ClientController implements ChatClientListener {
         cancelLoginTimeout();
         phase = Phase.IN_APP;
 
+        // Defensive: release any previous session's messenger (and its history store)
+        // before building a new one.
+        if (mainView != null) {
+            mainView.dispose();
+        }
+
         // A fresh messenger per login: it binds to the current connection's send
-        // methods and starts with a clean transcript for this session.
-        mainView = new MainView(pendingUsername, client::sendGlobalMessage, client::sendPrivateMessage);
+        // methods and to a SQLite-backed chat history scoped to this user. Persisted
+        // messages load in the background; new ones are recorded as they flow.
+        ChatHistory history = ChatHistory.open(pendingUsername);
+        mainView = new MainView(pendingUsername, client::sendGlobalMessage, client::sendPrivateMessage, history);
         mainView.showConnected();
 
         if (scene != null) {
@@ -272,6 +281,8 @@ public final class ClientController implements ChatClientListener {
         client = null;
         if (mainView != null) {
             mainView.showDisconnected();
+            mainView.dispose(); // close the chat-history store for this session
+            mainView = null;
         }
         connectView.setConnecting(false);
         connectView.showError(message);

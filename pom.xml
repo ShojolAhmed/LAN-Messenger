@@ -35,6 +35,9 @@
         <compiler.plugin.version>3.13.0</compiler.plugin.version>
         <javafx.plugin.version>0.0.8</javafx.plugin.version>
         <exec.plugin.version>3.5.0</exec.plugin.version>
+
+        <!-- SQLite (JDBC) for local chat persistence. Used only by the client. -->
+        <sqlite.jdbc.version>3.50.3.0</sqlite.jdbc.version>
     </properties>
 
     <dependencyManagement>
@@ -44,6 +47,14 @@
                 <groupId>com.lanmessenger</groupId>
                 <artifactId>common</artifactId>
                 <version>${project.version}</version>
+            </dependency>
+
+            <!-- SQLite JDBC driver (bundles the native SQLite engine). Version is
+                 pinned here so modules can depend on it without repeating it. -->
+            <dependency>
+                <groupId>org.xerial</groupId>
+                <artifactId>sqlite-jdbc</artifactId>
+                <version>${sqlite.jdbc.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

@@ -14,10 +14,22 @@ target/
 # Logs & runtime data
 # ------------------------------------------------------------
 *.log
-# SQLite databases (added in a later persistence phase)
+
+# SQLite chat-history database. By default this lives in the per-user application
+# data directory (outside the repo); these patterns also cover the case where it
+# is pointed at a project-local folder via -Dlanmessenger.data.dir.
 *.db
 *.sqlite
 *.sqlite3
+# SQLite write-ahead-log / journal / shared-memory sidecar files
+*.db-journal
+*.db-wal
+*.db-shm
+*.sqlite-journal
+*.sqlite-wal
+*.sqlite-shm
+# Local application data directory (if configured inside the project tree)
+/data/
 
 # ------------------------------------------------------------
 # IDE / editor

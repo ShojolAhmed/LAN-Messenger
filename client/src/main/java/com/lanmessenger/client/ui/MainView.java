@@ -1,5 +1,6 @@
 package com.lanmessenger.client.ui;
 
+import com.lanmessenger.client.history.ChatHistory;
 import com.lanmessenger.client.ui.components.ChatHeader;
 import com.lanmessenger.client.ui.components.MessageComposer;
 import com.lanmessenger.client.ui.components.MessageListView;
@@ -60,6 +61,12 @@ import java.util.function.Consumer;
  *       drops a quiet system notice into the affected conversation.</li>
  * </ul>
  *
+ * <h2>History</h2>
+ * <p>Each conversation loads its persisted messages from {@link ChatHistory} when it
+ * is first shown, and every delivered (non-system) message is recorded as it arrives.
+ * Loads and saves run off the JavaFX Application Thread; loaded history is merged in
+ * when it arrives (see {@link #applyHistory}). {@link #dispose()} releases the store.
+ *
  * <p>All of these methods must be called on the JavaFX Application Thread; the
  * controller already marshals the networking callbacks onto it.
  */
@@ -79,6 +86,7 @@ public final class MainView extends BorderPane {
     private final String currentUsername;
     private final Consumer<String> onSendGlobal;
     private final BiConsumer<String, String> onSendPrivate;
+    private final ChatHistory history;
 
     private final Conversation global;
     /** peer username &rarr; their direct conversation (kept even while they are offline). */
@@ -96,21 +104,29 @@ public final class MainView extends BorderPane {
      * @param onSendPrivate   where composed private messages are sent as
      *                        {@code (recipient, text)} (typically
      *                        {@code ChatClient::sendPrivateMessage})
+     * @param history         chat-history persistence; each conversation loads its
+     *                        stored messages when first shown and new messages are
+     *                        recorded as they are delivered. Pass
+     *                        {@link ChatHistory#disabled()} to run without
+     *                        persistence. Loads and saves happen off the FX thread.
      */
     public MainView(String currentUsername,
                     Consumer<String> onSendGlobal,
-                    BiConsumer<String, String> onSendPrivate) {
+                    BiConsumer<String, String> onSendPrivate,
+                    ChatHistory history) {
         this.currentUsername = currentUsername == null ? "" : currentUsername;
         this.onSendGlobal = onSendGlobal == null ? text -> { } : onSendGlobal;
         this.onSendPrivate = onSendPrivate == null ? (to, text) -> { } : onSendPrivate;
+        this.history = history == null ? ChatHistory.disabled() : history;
 
         getStyleClass().add("app-root");
 
+        ChatMessage globalSeed = ChatMessage.system(
+                "This is the beginning of the Global channel.", LocalDateTime.now());
         global = Conversation.builder(GLOBAL_ROOM_ID, ConversationKind.GLOBAL, GLOBAL_ROOM_TITLE)
                 .headerSubtitle("Everyone on the LAN")
                 .sidebarSubtitle("Public channel \u00b7 everyone")
-                .messages(List.of(ChatMessage.system(
-                        "This is the beginning of the Global channel.", LocalDateTime.now())))
+                .messages(List.of(globalSeed))
                 .build();
 
         sidebar = new Sidebar(global);
@@ -137,6 +153,10 @@ public final class MainView extends BorderPane {
         }
         refreshOnlinePeers();
         sidebar.selectGlobal(); // opens the global room via the selection callback
+
+        // Load any persisted global history in the background and merge it in when
+        // it arrives (see applyHistory); this never blocks the FX thread.
+        this.history.loadGlobal(loaded -> applyHistory(global, globalSeed, loaded));
     }
 
     /** Focuses the composer input; call once the window is shown. */
@@ -152,6 +172,15 @@ public final class MainView extends BorderPane {
     /** Reflects a lost/closed connection in the title bar's status pill. */
     public void showDisconnected() {
         titleBar.status().setState(StatusIndicator.State.DISCONNECTED);
+    }
+
+    /**
+     * Releases resources held by this view, chiefly the chat-history persistence
+     * (its background thread and database connection). Call when the messenger is
+     * torn down, e.g. on disconnect or before a new login replaces it.
+     */
+    public void dispose() {
+        history.close();
     }
 
     // ---------------------------------------------------------------------
@@ -323,17 +352,31 @@ public final class MainView extends BorderPane {
     }
 
     /**
-     * Appends {@code message} to {@code conversation}, updates its sidebar preview,
-     * and — unless the conversation is currently open — raises its unread badge.
+     * Appends {@code message} to {@code conversation}, records it for persistence,
+     * updates its sidebar preview, and &mdash; unless the conversation is currently
+     * open &mdash; raises its unread badge.
      *
      * @param own {@code true} if this is our own (outgoing) message
      */
     private void deliverInto(Conversation conversation, ChatMessage message, boolean own) {
         conversation.messages().add(message);
+        persist(conversation, message);
         sidebar.setPreview(conversation, preview(message));
         if (!own && conversation != active) {
             conversation.setUnread(conversation.unread() + 1);
             sidebar.refreshUnread(conversation);
+        }
+    }
+
+    /** Records a delivered message to chat history (system notices are not stored). */
+    private void persist(Conversation conversation, ChatMessage message) {
+        if (message.isSystem()) {
+            return;
+        }
+        if (conversation.isGlobal()) {
+            history.recordGlobal(message);
+        } else if (conversation.peer() != null) {
+            history.recordDirect(conversation.peer().name(), message);
         }
     }
 
@@ -350,15 +393,45 @@ public final class MainView extends BorderPane {
 
     /** Gets, or lazily creates, the direct conversation with {@code peer}. */
     private Conversation directConversation(String peer) {
-        return directByPeer.computeIfAbsent(peer, name -> Conversation.builder(
-                        "dm:" + name, ConversationKind.DIRECT, name)
-                .peer(new ChatUser(name))
+        Conversation existing = directByPeer.get(peer);
+        if (existing != null) {
+            return existing;
+        }
+        ChatMessage seed = ChatMessage.system(
+                "This is the beginning of your private conversation with " + peer + ".",
+                LocalDateTime.now());
+        Conversation dm = Conversation.builder("dm:" + peer, ConversationKind.DIRECT, peer)
+                .peer(new ChatUser(peer))
                 .headerSubtitle("Private conversation")
                 .sidebarSubtitle("Direct message")
-                .messages(List.of(ChatMessage.system(
-                        "This is the beginning of your private conversation with " + name + ".",
-                        LocalDateTime.now())))
-                .build());
+                .messages(List.of(seed))
+                .build();
+        directByPeer.put(peer, dm);
+        // Pull this peer's stored history in the background and merge it in on arrival.
+        history.loadDirect(peer, loaded -> applyHistory(dm, seed, loaded));
+        return dm;
+    }
+
+    /**
+     * Merges persisted history (loaded off-thread) into {@code conversation} once it
+     * arrives on the FX thread. Historical messages are placed first, followed by
+     * anything that arrived live during the load; the "beginning of conversation"
+     * {@code seed} notice is dropped when there is real history to show. A no-op when
+     * there is no stored history, so brand-new conversations keep their seed line.
+     */
+    private void applyHistory(Conversation conversation, ChatMessage seed, List<ChatMessage> loaded) {
+        if (loaded == null || loaded.isEmpty()) {
+            return;
+        }
+        List<ChatMessage> merged = new ArrayList<>(loaded.size() + conversation.messages().size());
+        merged.addAll(loaded);
+        for (ChatMessage message : conversation.messages()) {
+            if (message != seed) {
+                merged.add(message);
+            }
+        }
+        conversation.messages().setAll(merged);
+        sidebar.setPreview(conversation, preview(merged.get(merged.size() - 1)));
     }
 
     private void updateGlobalHeaderSubtitle() {
