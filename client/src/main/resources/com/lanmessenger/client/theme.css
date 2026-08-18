@@ -649,6 +649,13 @@
     -fx-opacity: 1;
     -fx-cursor: default;
 }
+/* Paper-plane send glyph (an SVGPath); colour lives here, not in Java. */
+.send-icon {
+    -fx-fill: -color-on-primary;
+}
+.send-button:disabled .send-icon {
+    -fx-fill: -color-text-muted;
+}
 
 /* ------------------------------------------------------------
    11. EMPTY STATE

@@ -6,11 +6,13 @@ import javafx.geometry.Pos;
 import javafx.scene.control.Button;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextFormatter;
+import javafx.scene.control.Tooltip;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
+import javafx.scene.shape.SVGPath;
 
 import java.util.function.Consumer;
 
@@ -38,7 +40,7 @@ public final class MessageComposer extends VBox {
     private static final int MAX_ROWS = 5;
 
     private final TextArea input = new TextArea();
-    private final Button send = new Button("Send");
+    private final Button send = new Button();
 
     private Consumer<String> onSend = text -> { };
 
@@ -64,7 +66,18 @@ public final class MessageComposer extends VBox {
         // Grow with the content up to MAX_ROWS, then let the input scroll.
         input.textProperty().addListener((obs, old, text) -> adjustRows(text));
 
+        // A crisp, font-independent paper-plane "send" glyph (classic 24x24 path).
+        // It is tinted via CSS (.send-icon) so the colour still lives in theme.css.
+        SVGPath sendIcon = new SVGPath();
+        sendIcon.setContent("M2 21l21-9L2 3v7l15 2-15 2v7z");
+        sendIcon.getStyleClass().add("send-icon");
+        sendIcon.setScaleX(0.82);
+        sendIcon.setScaleY(0.82);
+
+        send.setGraphic(sendIcon);
         send.getStyleClass().add("send-button");
+        send.setAccessibleText("Send message");
+        send.setTooltip(new Tooltip("Send"));
         // Disable while there is nothing meaningful to send.
         send.disableProperty().bind(
                 Bindings.createBooleanBinding(() -> input.getText().isBlank(), input.textProperty()));
